@@ -1,7 +1,7 @@
 
 //board
 let board;
-let boardWidth=360;
+let boardWidth=500;
 let boardHeight=640;
 let context;
 
@@ -30,9 +30,11 @@ let bottomPipeImg;
 //physics
 let velocityX=-2;
 let velocityY=0;
-let gravity=0.4;
+let gravity=0.1;
 
 let gameOver=false;
+let gameStarted=false;
+let gameReady=false;
 let score=0;
 
 window.onload=function(){
@@ -59,62 +61,102 @@ window.onload=function(){
     bottomPipeImg.src="./bottompipe.png";
 
     requestAnimationFrame(update);
-    setInterval(placePipes,1500); //every 1.5 seconds
+    // setInterval(placePipes,1500); //every 1.5 seconds
     document.addEventListener("keydown",moveBird);
 
+    document.getElementById("startBtn").addEventListener("click",startGame);
+    document.getElementById("restartBtn").addEventListener("click",restartGame);
+
+}
+
+let pipeInterval;
+
+function startGame(){
+    if(!gameStarted){
+        gameStarted=true;
+        gameReady=false;
+        document.getElementById("startBtn").style.display="none";
+        document.getElementById("instructions").style.display="block";
+        pipeInterval=setInterval(placePipes,1500);
+    }
+}
+
+function restartGame(){
+    bird.y=birdY;
+    pipeArray=[];
+    score=0;
+    gameOver=false;
+    velocityY=0;
+    gameStarted=true;
+    document.getElementById("gameOverPopup").style.display="none";
+    document.getElementById("instructions").style.display="block";
+
+    clearInterval(pipeInterval);
+    // pipeInterval=setInterval(placePipes,1500);
 }
 
 function update(){
     requestAnimationFrame(update);
-    if (gameOver){
-        return;
-    }
     context.clearRect(0,0,board.width,board.height);
 
     //bird
-    velocityY+=gravity;
-    //bird.y+=velocityY;
-    bird.y=Math.max(bird.y+velocityY,0); //apply gravity to current bird.y limit the bird.y to top of the canvas
+    if(gameStarted && gameReady && !gameOver){
+        velocityY+=gravity;
+        bird.y=Math.max(bird.y+velocityY,0); //apply gravity to current bird.y limit the bird.y to top of the canvas
+    }
+
     context.drawImage(birdImg,bird.x,bird.y,bird.width,bird.height);
 
-    if(bird.y>board.height  || bird.y<0){
+    if(bird.y>board.height){
         gameOver=true;
     }
 
     //pipes
 
-    for(let i=0;i<pipeArray.length;i++){
-        let pipe=pipeArray[i];
-        pipe.x+=velocityX;
-        context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
+    if(gameStarted && gameReady && !gameOver){
+        for(let i=0;i<pipeArray.length;i++){
+            let pipe=pipeArray[i];
+            pipe.x+=velocityX;
+            context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
 
-        if(!pipe.passed && bird.x>pipe.x+pipe.width){
-            score+=0.5; //0.5 because there are 2 pipes,top and biottom ! so when the bird passes the top pipe it will add 0.5 and when it passes the bottom pipe it will add another 0.5 and total score will be 1 ;0.5*2=1
-            pipe.passed=true;
+            if(!pipe.passed && bird.x>pipe.x+pipe.width){
+                score+=0.5; //0.5 because there are 2 pipes,top and biottom ! so when the bird passes the top pipe it will add 0.5 and when it passes the bottom pipe it will add another 0.5 and total score will be 1 ;0.5*2=1
+                pipe.passed=true;
+            }
+
+            if(detectCollision(bird,pipe)){
+                gameOver=true;
+            }
         }
 
-        if(detectCollision(bird,pipe)){
-            gameOver=true;
+        //clear pipes
+        while (pipeArray.length>0 && pipeArray[0].x<-pipeWidth){
+            pipeArray.shift(); //remove first element from the array
         }
     }
 
-    //clear pipes
-    while (pipeArray.length>0 && pipeArray[0].x<-pipeWidth){
-        pipeArray.shift(); //remove first element from the array
+    if(gameStarted  && gameOver){
+        for(let i=0;i<pipeArray.length;i++){
+            let pipe=pipeArray[i];
+            context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
+        }
     }
 
-    //score
+    
+
+    //score with coin icon
     context.fillStyle="white";
     context.font="45px sans-serif";
-    context.fillText(score,5,45);
+    context.fillText("🪙 "+score,10,45);
 
     if(gameOver){
-        context.fillText("Game Over",5,90);
+        document.getElementById("gameOverPopup").style.display="block";
+        document.getElementById("finalScore").innerText=score;
     }
 }
 
 function placePipes(){
-    if(gameOver){
+    if(gameOver || !gameStarted){
         return;
     }
 
@@ -148,18 +190,14 @@ function placePipes(){
 }
 
 function moveBird(e){
-    if(e.code=="Space" || e.code=="ArrowUp" || e.code=="keyX"){
-        //jump
-        velocityY=-6;
+    if((e.code=="Space" || e.code=="ArrowUp" || e.code=="keyX" ) && gameStarted && !gameOver){
+        velocityY=-4;  //jump
+    }
 
-        //reset game
-        if(gameOver){
-            bird.y=birdY;
-            pipeArray=[];
-            score=0;
-            gameOver=false;
-            velocityY=0;
-        }
+    if(!gameReady){
+        gameReady=true;
+        document.getElementById("instructions").style.display="none";
+        pipeInterval=setInterval(placePipes,1500);
     }
 }
 
