@@ -1,9 +1,10 @@
 body{
     font-family:'Arial',sans-serif;
     text-align:center;
-    /* background-color:#70c5ce; */
+    background-color:#70c5ce;
     margin:0;
-    padding:20px;
+    padding:0;
+    transition:background-color 0.5s ease;
     /* display:flex;
     flex-direction:column;
     align-items:center;
@@ -11,18 +12,19 @@ body{
     min-height:100vh; */
 }
 #board{
-    /*background-color:skyblue;*/
-    background-image:url("./flappybirdbg.png");
+    background-color:transparent;
+    /* background-image:url("./flappybirdbg.png"); */
     box-shadow:0 0 20px rgba(0,0,0,0.5);
+    margin-top:20px;
 }
 
 #startBtn{
     position:fixed;
-    top:50%;
+    top:45%;
     left:50%;
     transform:translate(-50%,-50%);
     padding:20px 50px;
-    font-size:20px;
+    font-size:28px;
     background-color:#4CAF50;
     color:white;
     border:none;
@@ -36,6 +38,38 @@ body{
 #startBtn:hover{
     background-color:#45a049;
     transform:translate(-50%,-50%) scale(1.05);
+}
+
+.difficultyMenu{
+    position:fixed;
+    top: 60%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    z-index: 999;
+}
+
+.difficulty-btn{
+    padding: 12px 30px;
+    margin:5px;
+    font-size:18px;
+    background-color:#2196F3;
+    color:white;
+    border: 2px solid white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.difficulty-btn:hover{
+    background-color:#0b7dda;
+    transform: scale(1.05);
+}
+
+.difficulty-btn.active{
+    background-color: #ff9800;
+    border-color: #ff9800;
+    box-shadow: 0 0 15px rgba(255,152,0,0.6);
 }
 
 #instructions{
@@ -60,6 +94,42 @@ body{
     25%, 75% {opacity:0.5;}
 }
 
+#pauseMenu{
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    background-color: white;
+    padding: 40px 60px;
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(0 ,0,0,0.7);
+    z-index:1000;
+}
+
+#pauseMenu h1{
+    color:#2196F3;
+    margin:0 0 20px 0;
+    font-size:36px;
+}
+
+#resumeBtn{
+    padding:15px 40px;
+    font-size:20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+#resumeBtn:hover{
+    background-color: #45a049;
+    transform: scale(1.05);
+}
+
 #gameOverPopup{
     display:none;
     position:fixed;
@@ -67,20 +137,36 @@ body{
     left:50%;
     transform:translate(-50%,-50%);
     background-color:white;
-    padding:40px;
+    padding:40px 60px;
     border-radius:15px;
     box-shadow:0 0 30px rgba(0,0,0,0.7);
-    z-index:100;
+    z-index:1000;
 }
 
 #gameOverPopup h1{
     color:#ff4444;
     margin:0 0 20px 0;
+    font-size:36px;
 }
 
 #gameOverPopup p{
     font-size:24px;
     margin:15px 0;
+}
+
+#highScoreMessage{
+    display: none;
+    color: #FFD700;
+    font-size:28px;
+    font-weight: bold;
+    margin:15px 0;
+    animation: pulse 1s infinite;
+    text-shadow: 2px 2px 4px rgba(255, 0, 0, 0.3);
+}
+
+@keyframes pulse{
+    0%, 100%{transform: scale(1);}
+    50%{transform: scale(1.1);}
 }
 
 #restartBtn{
@@ -97,4 +183,24 @@ body{
 
 #restartBtn:hover{
     background-color:#e68900;
+    transform:scale(1.05);
+}
+
+.hint{
+    font-size: 14px;
+    color: #666;
+    margin-top: 10px;
+}
+
+.controls-hint{
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translate(-50%);
+    color: white;
+    font-size: 16px;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 10px 20px;
+    border-radius: 8px;
+    z-index: 998;
 }

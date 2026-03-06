@@ -11,12 +11,31 @@
         <canvas id="board"></canvas>
         <br>
         <button id="startBtn">START GAME</button>
+
+        <div id="difficultyMenu">
+            <button class="difficulty-btn" id="easyBtn">🟢 Easy</button>
+            <button class="difficulty-btn active" id="mediumBtn">🟡 MEDIUM</button>
+            <button class="difficulty-btn" id="hardBtn">🔴 HARD</button>
+        </div>
+
         <div id="instructions">Press SPACE or ↑ to Start!</div>
 
-        <div id="gameOverPopup">
-            <h1>GAME OVER</h1>
-            <p>Your Score: 🪙 <span id="finalScore">0</span></p>
-            <button id="restartBtn">PLAY AGAIN</button>
+        <div id="pauseMenu">
+            <h1>⏸️ PAUSED</h1>
+            <button id="resumeBtn">RESUME</button>
+            <p class="hint">Press P to resume</p>
         </div>
+
+        <div id="gameOverPopup">
+            <h1>💀 GAME OVER</h1>
+            <p id="highScoreMessage">🏆 NEW HIGH SCORE! 🏆</p>
+            <p>Your Score: 🪙 <span id="finalScore">0</span></p>
+            <button id="restartBtn">RESTART GAME</button>
+            <p class="hint">or press SPACE</p>
+        </div>
+
+        <!-- <div class="controls-hint">
+            🎮 Controls: SPACE/↑ to Jump | P to Pause
+        </div> -->
     </body>
 </html>
