@@ -8,6 +8,26 @@
         <script src="flappybird.js"></script>
     </head>
     <body>
+
+        <div id="themePopup">
+            <h1>CHOOSE YOUR THEME</h1>
+            <div id="theme-btn-container">
+                <button class="theme-btn" id="oasisBtn">
+                    <div class="theme-preview">🏝️</div>
+                    OASIS THEME
+                </button>
+                <button class="theme-btn" id="desertBtn">
+                    <div class="theme-preview">🏜️</div>
+                    DESERT THEME
+                </button>
+            </div>
+        </div>
+
+        <div class="coin-display">
+            Total: <span id="mainCoinDisplay">0</span>
+        </div>
+
+        
         <canvas id="board"></canvas>
         <br>
         <button id="startBtn">START GAME</button>
@@ -29,9 +49,26 @@
         <div id="gameOverPopup">
             <h1>💀 GAME OVER</h1>
             <p id="highScoreMessage">🏆 NEW HIGH SCORE! 🏆</p>
-            <p>Your Score: 🪙 <span id="finalScore">0</span></p>
+
+            <div>
+                <p><strong>Ypur Score:</strong> 🪙 <span id="finalScore">0</span></p>
+                <p><strong>Coins This Game:</strong> 💰 <span id="coinsThisGame">0</span></p>
+                <p><strong>Total Coins: 🪙</strong> 💰 <span id="totalCoinsDisplay">0</span></p>
+            </div>
+
+
             <button id="restartBtn">RESTART GAME</button>
             <p class="hint">or press SPACE</p>
+        </div>
+
+        <div class="powerup-legend">
+            <h3>⚡ Power-Ups</h3>
+            <p>🛡️ <strong>shield</strong> - Survive 1 hit</p>
+            <p>⏱️ <strong>Slow Mo</strong> - Half speed(5s)</p>
+            <p>⚡ <strong>Double</strong> - @X points(5s)</p>
+            <p>🧲 <strong>Magnet</strong> - Attract coins(5s)</p>
+            <hr style="border-color:#666">
+            <p style="background-color: rgba(255, 215, 0, 0.2);">💰 <strong>Coins</strong> <br> +2 points each</p>
         </div>
 
         <!-- <div class="controls-hint">
