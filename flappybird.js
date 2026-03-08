@@ -7,7 +7,7 @@ let context;
 
 //background
 let bgImg;
-let bgX;
+let bgX=0;
 let bgX2=500;
 
 let oasisBg;
@@ -71,6 +71,15 @@ let dieSoundPlayed=false;
 let difficulty="medium";
 let pipeGap=boardHeight/4;
 
+let pipeSpawnMs=1500;
+let coinSpawnMs=2000;
+let powerupSpawnMs=3000;
+
+let speedMultiplier=1;
+
+
+
+
 let jumpSound=new Audio();
 let scoreSound=new Audio();
 let hitSound=new Audio();
@@ -100,12 +109,22 @@ let hasSlowMotion=false;
 let hasDoublePoints=false;
 let hasMagnet=false;
 
+let shieldTimer=0
 let slowMotionTimer=0;
 let doublePointsTimer=0;
 let magnetTimer=0;
+
 let shieldRotation=0;
 let animationStarted=false;
 
+let invulnerableFrames=0;
+
+let pipeInterval=null;
+let coinInterval=null;
+let powerupInterval=null;
+
+let lastGapTop=140;
+let lastGapBottom=500;
 
 window.onload=function(){
     board=this.document.getElementById("board");
@@ -188,7 +207,7 @@ window.onload=function(){
         this.document.getElementById("difficultyMenu").style.display="none";
     }
     if(this.document.getElementById("difficultyMenu")){
-        this.document.getElementById("difficultyMenu").style,display="none"
+        this.document.getElementById("difficultyMenu").style.display="none"
     }
     if(this.document.getElementById("instructions")){
         this.document.getElementById("instructions").style.display="none";
@@ -215,6 +234,8 @@ window.onload=function(){
     this.document.getElementById("hardBtn").addEventListener("click",()=>setDifficulty("hard"));
 
     this.document.getElementById("resumeBtn").addEventListener("click",togglePause);
+
+    applyDifficultySettings();
 }
 
 
@@ -240,15 +261,15 @@ function selectTheme(theme){
     document.getElementById("startBtn").style.display="block";
     document.getElementById("difficultyMenu").style.display="block";
 
+    bgX=0;
+    bgX2=boardWidth;
+
     if(!animationStarted){
         animationStarted=true;
         requestAnimationFrame(update);
     }
 }
 
-let pipeInterval;
-let coinInterval;
-let powerupInterval;
 
 function updateCoinDisplay(){
     if(document.getElementById("mainCoinDisplay")){
@@ -256,48 +277,149 @@ function updateCoinDisplay(){
     }
 }
 
-function setDifficulty(level){
-    difficulty=level;
+function applyDifficultySettings(){
 
-    if(level==="easy"){
+    if(difficulty==="easy"){
         baseVelocityX=-1.5;
-        velocityX=-1.5;
+        // velocityX=-1.5;
         pipeGap=boardHeight/3;
         gravity=0.1;
+
+        pipeSpawnMs=2000;
+        coinSpawnMs=2400;
+        powerupSpawnMs=4200;
+
     }
-    else if(level==="medium"){
+    else if(difficulty==="medium"){
         baseVelocityX=-2;
-        velocityX=-2;
+        // velocityX=-2;
         pipeGap=boardHeight/4;
         gravity=0.15;
+
+        pipeSpawnMs=1500;
+        coinSpawnMs=2000;
+        powerupSpawnMs=3000;
     }
-    else if(level==="hard"){
+    else if(difficulty==="hard"){
         baseVelocityX=-3;
-        velocityX=-3;
+        // velocityX=-3;
         pipeGap=boardHeight/5;
         gravity=0.2;
+
+        pipeSpawnMs=1200;
+        coinSpawnMs=1700;
+        powerupSpawnMs=2500;
     }
 
-    document.querySelectorAll(".difficulty-btn").forEach(btn=> {
-        btn.classList.remove("active");
-    });
-    document.getElementById(level+"Btn").classList.add("active");
+    velocityX=baseVelocityX*speedMultiplier;
+
+    // document.querySelectorAll(".difficulty-btn").forEach(btn=> {
+    //     btn.classList.remove("active");
+    // });
+    // document.getElementById(level+"Btn").classList.add("active");
 }
+
+function clearAllIntervals(){
+    if(pipeInterval){
+        clearInterval(pipeInterval);
+        pipeInterval=null;
+    }
+    if(coinInterval){
+        clearInterval(coinInterval);
+        coinInterval=null;
+    }
+    if(powerupInterval){
+        clearInterval(powerupInterval);
+        powerupInterval=null;
+    }
+}
+
+function startAllIntervals(){
+    clearAllIntervals();
+
+    const pipeMs=Math.round(pipeSpawnMs/speedMultiplier);
+    const coinMs=Math.round(coinSpawnMs/speedMultiplier);
+    const powerMs=Math.round(powerupSpawnMs/speedMultiplier);
+
+
+    pipeInterval=setInterval(placePipes,pipeMs);
+    coinInterval=setInterval(placeCoins,coinMs);
+    powerupInterval=setInterval(placePowerups,powerMs);
+}
+
+function applySpeedMultiplier(mult){
+    speedMultiplier=mult;
+    velocityX=baseVelocityX*speedMultiplier;
+
+    if(gameStarted && gameReady && !gameOver && !gamePaused){
+        startAllIntervals();
+    }
+
+}
+
+function setDifficulty(level){
+    difficulty=level;
+    applyDifficultySettings();
+
+     document.querySelectorAll(".difficulty-btn").forEach(btn=>{
+        btn.classList.remove("active");
+     })
+     document.getElementById(level+"Btn").classList.add("active");
+
+     if(gameStarted && gameReady && !gameOver){
+        startAllIntervals();
+     }
+}
+
+// applyDifficultySettings();
 
 function startGame(){
     if(!gameStarted){
         gameStarted=true;
         gameReady=false;
+        gameOver=false;
+        gamePaused=false;
+
+        bird.x=birdX;
+        bird.y=birdY;
+
         bgX=0;
         bgX2=boardWidth;
+
+        pipeArray=[];
+        coinArray=[];
+        powerupArray=[];
+
+        score=0;
+        velocityY=0;
+
         currentFrame=0;
         frameCount=0;
         lastMileStone=0;
+
         isNewHighScore=false;
         hitSoundPlayed=false;
         dieSoundPlayed=false;
+        showMilestoneMessage=false;
+        milestoneMessageTimer=0;
+
         sessionCoins=0;
         shieldRotation=0;
+        invulnerableFrames=0;
+
+        hasShield=false;
+        hasSlowMotion=false;
+        hasDoublePoints=false;
+        hasMagnet=false;
+
+        shieldTimer=0;
+        slowMotionTimer=0;
+        doublePointsTimer=0;
+        magnetTimer=0;
+
+        speedMultiplier=1;
+        applyDifficultySettings();
+
         
         if(currentTheme==="oasis"){
             bgColor='#70c5ce';
@@ -308,72 +430,73 @@ function startGame(){
 
         document.body.style.backgroundColor=bgColor;
 
-        hasShield=false;
-        hasSlowMotion=false;
-        hasDoublePoints=false;
-        hasMagnet=false;
-        slowMotionTimer=0;
-        doublePointsTimer=0;
-        magnetTimer=0;
-
         document.getElementById("startBtn").style.display="none";
         document.getElementById("difficultyMenu").style.display="none";
         document.getElementById("instructions").style.display="block";
+        document.getElementById("gameOverPopup").style.display="none";
+        document.getElementById("pauseMenu").style.display="none";
         // pipeInterval=setInterval(placePipes,1500);
         playSound(bgMusic);
     }
 }
 
 function restartGame(){
-    bird.y=birdY;
-    bird.x=birdX;
-    pipeArray=[];
-    coinArray=[];
-    powerupArray=[];
-    score=0;
-    gameOver=false;
-    velocityY=0;
-    gameStarted=true;
-    gameReady=false;
-    gamePaused=false;
-    bgX=0;
-    bgX2=boardWidth;
-    currentFrame=0;
-    frameCount=0;
-    lastMileStone=0;
-    isNewHighScore=false;
-    hitSoundPlayed=false;
-    dieSoundPlayed=false;
-    sessionCoins=0;
-    shieldRotation=0;
+    // bird.y=birdY;
+    // bird.x=birdX;
+    // pipeArray=[];
+    // coinArray=[];
+    // powerupArray=[];
+    // score=0;
+    // gameOver=false;
+    // velocityY=0;
+    // gameStarted=true;
+    // gameReady=false;
+    // gamePaused=false;
+    // bgX=0;
+    // bgX2=boardWidth;
+    // currentFrame=0;
+    // frameCount=0;
+    // lastMileStone=0;
+    // isNewHighScore=false;
+    // hitSoundPlayed=false;
+    // dieSoundPlayed=false;
+    // sessionCoins=0;
+    // shieldRotation=0;
+    // invulnerableFrames=0;
 
-    if(currentTheme==="oasis"){
-        bgColor='#70c5ce';
-    }
-    else if(currentTheme==='desert'){
-        bgColor='#f4a460'
-    }
+    // hasShield=false;
+    // hasSlowMotion=false;
+    // hasDoublePoints=false;
+    // hasMagnet=false;
+    // slowMotionTimer=0;
+    // doublePointsTimer=0;
+    // magnetTimer=0;
 
-    document.body.style.backgroundColor=bgColor;
+    // velocityX=baseVelocityX;
+
+    // // if(currentTheme==="oasis"){
+    // //     bgColor='#70c5ce';
+    // // }
+    // // else if(currentTheme==='desert'){
+    // //     bgColor='#f4a460'
+    // // }
+
+    // // document.body.style.backgroundColor=bgColor;
     
-    hasShield=false;
-    hasSlowMotion=false;
-    hasDoublePoints=false;
-    hasMagnet=false;
-    slowMotionTimer=0;
-    doublePointsTimer=0;
-    magnetTimer=0;
+    // document.getElementById("pauseMenu").style.display="none";
+    // document.getElementById("gameOverPopup").style.display="none";
+    // document.getElementById("instructions").style.display="block";
 
-    velocityX=baseVelocityX;
+    // // clearInterval(pipeInterval);
+    // // clearInterval(coinInterval);
+    // // clearInterval(powerupInterval);
+    // // // pipeInterval=setInterval(placePipes,1500);
+    // clearAllIntervals();
+    // playSound(bgMusic);
 
-    document.getElementById("gameOverPopup").style.display="none";
-    document.getElementById("instructions").style.display="block";
-
-    clearInterval(pipeInterval);
-    clearInterval(coinInterval);
-    clearInterval(powerupInterval);
-    // pipeInterval=setInterval(placePipes,1500);
-    playSound(bgMusic);
+    gameStarted=false;
+    clearAllIntervals();
+    startGame();
 }
 
 function togglePause(){
@@ -386,10 +509,15 @@ function togglePause(){
     if(gamePaused){
         document.getElementById("pauseMenu").style.display="block";
         bgMusic.pause();
+        clearAllIntervals();
     }
     else{
         document.getElementById("pauseMenu").style.display="none";
         playSound(bgMusic);
+
+        if(gameReady){
+            startAllIntervals();
+        }
     }
 }
 
@@ -421,9 +549,10 @@ function handleKeyPress(e){
             gameReady=true;
             velocityY=0;
             document.getElementById("instructions").style.display="none";
-            pipeInterval=setInterval(placePipes,1500);
-            coinInterval=setInterval(placeCoins,2000);
-            powerupInterval=setInterval(placePowerups,3000);
+            // pipeInterval=setInterval(placePipes,1500);
+            // coinInterval=setInterval(placeCoins,2000);
+            // powerupInterval=setInterval(placePowerups,3000);
+            startAllIntervals();
         }
         else{
             if(difficulty==="easy"){
@@ -444,10 +573,15 @@ function handleKeyPress(e){
 function placeCoins(){
     if(gameOver || !gameStarted || !gameReady) return;
 
-    let coinY=Math.random()*(boardHeight-200)+100;
+    const padding=40;
+    const minY=Math.max(0,lastGapTop+padding);
+    const maxY=Math.min(boardHeight-coinHeight,lastGapBottom-padding);
+    if(maxY<=minY) return ;
+
+    let coinY=minY + Math.random()*(maxY-minY);
 
     let coin={
-        x:boardWidth,
+        x:boardWidth+220,
         y:coinY,
         width:coinWidth,
         height:coinHeight,
@@ -465,7 +599,14 @@ function placePowerups(){
 
     let powerupTypes=["shield","slowmotion","doublepoints","magnet"];
     let randomType=powerupTypes[Math.floor(Math.random()*powerupTypes.length)];
-    let powerupY=Math.random()*(boardHeight-250)+125;
+    
+    const padding=50;
+    const minY=Math.max(0,lastGapTop+padding);
+    const maxY=Math.min(boardHeight-powerupHeight,lastGapBottom-padding);
+    if(maxY<=minY) return;
+
+    let powerupY=minY+Math.random()*(maxY-minY);
+
 
     const minOffsetX=180;
     const maxOffsetX=360;
@@ -488,12 +629,13 @@ function activePowerup(type){
 
     if(type==="shield"){
         hasShield=true;
+        shieldTimer=300;
         showPowerupMessage("🛡️ Shield Activated!");
     }
     else if(type==="slowmotion"){
         hasSlowMotion=true;
         slowMotionTimer=300;
-        velocityX=baseVelocityX/2;
+        applySpeedMultiplier(0.5);
         showPowerupMessage("⏳ Slow Motion!");
     }
     else if(type==="doublepoints"){
@@ -526,6 +668,10 @@ function update(){
     document.body.style.backgroundColor=bgColor;
     context.clearRect(0,0,board.width,board.height);
 
+    if(invulnerableFrames>0){
+        invulnerableFrames--;
+    }
+
     if(gamePaused){
         if(bgImg.complete){
             context.drawImage(bgImg,bgX,0,boardWidth,boardHeight);
@@ -541,12 +687,14 @@ function update(){
             context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
         }
 
-        context.fillStyle="white";
-        context.font="45px sans-serif";
-        context.fillText("🪙 "+Math.floor(score),10,45);
-        context.font="25px sans-serif";
-        context.fillText("Best: "+Math.floor(highScore),10,80);
-        context.fillText("Coins: "+Math.floor(totalCoins),10,110);
+        drawHUD();
+
+        // context.fillStyle="white";
+        // context.font="45px sans-serif";
+        // context.fillText("🪙 "+Math.floor(score),10,45);
+        // context.font="25px sans-serif";
+        // context.fillText("Best: "+Math.floor(highScore),10,80);
+        // context.fillText("Coins: "+Math.floor(totalCoins),10,110);
 
         return;
     }
@@ -555,7 +703,7 @@ function update(){
         slowMotionTimer--;
         if(slowMotionTimer==0){
             hasSlowMotion=false;
-            velocityX=baseVelocityX;
+            applySpeedMultiplier(1);
         }
     }
 
@@ -570,6 +718,13 @@ function update(){
         magnetTimer--;
         if(magnetTimer===0){
             hasMagnet=false;
+        }
+    }
+
+    if(hasShield && shieldTimer>0){
+        shieldTimer--;
+        if(shieldTimer===0){
+            hasShield=false;
         }
     }
 
@@ -602,7 +757,7 @@ function update(){
         }
     }
 
-    if(hasShield){
+    if(hasShield && shieldTimer>0){
         shieldRotation+=0.05;
 
         context.save();
@@ -637,7 +792,9 @@ function update(){
     }
 
     if(birdFrames[currentFrame] && birdFrames[currentFrame].complete){
-        context.drawImage(birdFrames[currentFrame],bird.x,bird.y,bird.width,bird.height);
+        if(invulnerableFrames===0 || Math.floor(invulnerableFrames/5)%2===0){
+            context.drawImage(birdFrames[currentFrame],bird.x,bird.y,bird.width,bird.height);
+        }
     }
 
     if(bird.y>board.height && !gameOver && gameReady){
@@ -648,6 +805,7 @@ function update(){
         }
         bgMusic.pause();
         bgMusic.currentTime=0;
+        clearAllIntervals();
     }
 
     if(gameStarted && gameReady && !gameOver){
@@ -665,12 +823,12 @@ function update(){
                     coin.x+=dx*0.1;
                     coin.y+=dy*0.1;
 
-                    context.strokeStyle="rgba(255, 215, 0, 0.7)";
-                    context.lineWidth=2;
-                    context.beginPath();
-                    context.moveTo(bird.x+bird.width/2,bird.y+bird.height/2);
-                    context.lineTo(coin.x+coin.width/2,coin.y+coin.height/2);
-                    context.stroke();
+                    // context.strokeStyle="rgba(255, 215, 0, 0.7)";
+                    // context.lineWidth=2;
+                    // context.beginPath();
+                    // context.moveTo(bird.x+bird.width/2,bird.y+bird.height/2);
+                    // context.lineTo(coin.x+coin.width/2,coin.y+coin.height/2);
+                    // context.stroke();
                 }
             }
 
@@ -680,10 +838,10 @@ function update(){
                 context.translate(coin.x+coin.width/2,coin.y+coin.height/2);
                 context.rotate(coin.rotation);
 
-                context.fillStyle="rgba(0,0,0,0.3)";
-                context.beginPath();
-                context.ellipse(2,2,coinWidth/2,coinHeight/2,0,0,Math.PI*2);
-                context.fill();
+                // context.fillStyle="rgba(0,0,0,0.3)";
+                // context.beginPath();
+                // context.ellipse(2,2,coinWidth/2,coinHeight/2,0,0,Math.PI*2);
+                // context.fill();
 
 
                 context.fillStyle = "#FFD700";
@@ -694,10 +852,10 @@ function update(){
                 context.fill();
                 context.stroke();
 
-                context.fillStyle="#FFA500";
-                context.beginPath();
-                context.arc(0,0,coinWidth/4,0,Math.PI*2);
-                context.fill();
+                // context.fillStyle="#FFA500";
+                // context.beginPath();
+                // context.arc(0,0,coinWidth/4,0,Math.PI*2);
+                // context.fill();
 
                 context.fillStyle="#FFA500";
                 context.font="bold 18px Arial";
@@ -709,14 +867,16 @@ function update(){
 
             if(!coin.collected && detectCollision(bird,coin)){
                 coin.collected=true;
-                score+=3;
+
+                let coinPoints=hasDoublePoints&& doublePointsTimer>0?6:3;
+                score+=coinPoints;
                 sessionCoins++;
                 totalCoins++;
                 localStorage.setItem('totalCoins',totalCoins);
                 updateCoinDisplay();
 
                 playSound(coinSound)
-                createCoinParticles(coin.x,coin.y);
+                // createCoinParticles(coin.x,coin.y);
             }
         }
 
@@ -761,7 +921,7 @@ function update(){
                 context.lineWidth=3;
                 context.fillRect(powerup.x,powerup.y+floatOffset,powerup.width,powerup.height);
                 context.strokeRect(powerup.x,powerup.y+floatOffset,powerup.width,powerup.height);
-                context.shadowBlur=0;
+                // context.shadowBlur=0;
 
                 context.font="28px Arial";
                 context.textAlign="center";
@@ -797,7 +957,7 @@ function update(){
             context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
 
             if(!pipe.passed && bird.x>pipe.x+pipe.width){
-                let points=hasDoublePoints?1:0.5;
+                let points=(hasDoublePoints && doublePointsTimer)?1:0.5;
                 score+=points; 
                 pipe.passed=true;
 
@@ -848,12 +1008,14 @@ function update(){
             }
 
 
-            if(detectCollision(bird,pipe) && !gameOver){
-                if(hasShield){
-                    hasShield=false;
-                    showPowerupMessage("🛡️ Shield Lost!");
+            if(invulnerableFrames===0 && detectCollision(bird,pipe) && !gameOver){
+                if(hasShield && shieldTimer>0){
+                    // hasShield=false;
+                    invulnerableFrames=10;
+                    showPowerupMessage("🛡️ Blocked!");
                     playSound(powerupSound);
-                    createShieldBreakEffect();
+                    // createShieldBreakEffect();
+                    bird.x=Math.max(bird.x-8,0);
                 }
                 else{
                     gameOver=true;
@@ -867,6 +1029,7 @@ function update(){
                     }
                     bgMusic.pause();
                     bgMusic.currentTime=0;
+                    clearAllIntervals();
                 }
                 
             }
@@ -877,65 +1040,15 @@ function update(){
         }
     }
 
-    if(gameStarted  && gameOver){
-        for(let i=0;i<pipeArray.length;i++){
-            let pipe=pipeArray[i];
-            context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
-        }
-    }
+    // if(gameStarted  && gameOver){
+    //     for(let i=0;i<pipeArray.length;i++){
+    //         let pipe=pipeArray[i];
+    //         context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
+    //     }
+    // }
 
     
-    context.fillStyle="white";
-    context.strokeStyle="black";
-    context.lineWidth=3;
-    context.font="45px sans-serif";
-    context.fillText("🪙 "+Math.floor(score),10,45);
-    context.strokeText("🪙 "+Math.floor(score),10,45);
-
-
-    context.font="25px sans-serif";
-    context.strokeText("Best: "+Math.floor(highScore),10,80);
-    context.fillText("Best: "+Math.floor(highScore),10,80);
-    context.strokeText("Coins: 💰 "+Math.floor(totalCoins),10,110);
-    context.fillText("Coins: 💰 "+Math.floor(totalCoins),10,110);
     
-    let powerupY=150;
-    context.font="20px sans-serif";
-    context.fillStyle="white";
-    // context.strokeStyle="black";
-    // context.lineWidth=2;
-
-    if(hasShield){
-        context.strokeText("🛡️ Shield",10,powerupY);
-        context.fillStyle="cyan";
-        context.fillText("🛡️ Shield",10,powerupY);
-        context.fillStyle="white";
-        powerupY+=30;
-    }
-    if(hasSlowMotion){
-        let timeLeft=Math.ceil(slowMotionTimer/60);
-        context.strokeText("⏳ Slow Motion: "+timeLeft+"s",10,powerupY);
-        context.fillStyle="#9370DB";
-        context.fillText("⏳ Slow Motion: "+timeLeft+"s",10,powerupY);
-        context.fillStyle="white";
-        powerupY+=30;
-    }
-    if(hasDoublePoints){
-        let timeLeft=Math.ceil(doublePointsTimer/60);
-        context.strokeText("⚡ Double Points: "+timeLeft+"s",10,powerupY);
-        context.fillStyle="gold";
-        context.fillText("⚡ Double Points: "+timeLeft+"s",10,powerupY);
-        context.fillStyle="white";
-        powerupY+=30;
-    }
-    if(hasMagnet){
-        let timeLeft=Math.ceil(magnetTimer/60);
-        context.strokeText("🧲 Magnet: "+timeLeft+"s",10,powerupY);
-        context.fillStyle="hotpink";
-        context.fillText("🧲 Magnet: "+timeLeft+"s",10,powerupY);
-        context.fillStyle="white";
-        powerupY+=30;
-    }
 
     if(showMilestoneMessage && milestoneMessageTimer>0){
         context.fillStyle="yellow";
@@ -968,11 +1081,17 @@ function update(){
 
     }
 
+    drawHUD();
+
 
     if(gameOver){
         document.getElementById("gameOverPopup").style.display="block";
         document.getElementById("finalScore").innerText=Math.floor(score);
-        document.getElementById("sessionCoins").innerText=Math.floor(sessionCoins);
+
+        const coinsThisGame=document.getElementById("coinsThisGame");
+        if(coinsThisGame) coinsThisGame.innerText=Math.floor(sessionCoins);
+
+
         document.getElementById("totalCoinsDisplay").innerText=Math.floor(totalCoins);
 
         if(isNewHighScore){
@@ -986,36 +1105,117 @@ function update(){
     }
 }
 
-let coinParticles=[];
+function drawHUD(){
+    context.fillStyle="white";
+    context.strokeStyle="black";
+    context.lineWidth=3;
 
-function createCoinParticles(x,y){
-    for(let i=0;i<8;i++){
-        coinParticles.push({
-            x:x,
-            y:y,
-            vx:(Math.random()-0.5)*4,
-            vy:(Math.random()-0.5)*4,
-            life:20,
-            color:"#FFD700"
-        });
+    context.font="45px sans-serif";
+    context.fillText("🪙 "+Math.floor(score),10,45);
+    context.strokeText("🪙 "+Math.floor(score),10,45);
+
+
+    context.font="25px sans-serif";
+    context.strokeText("Best: "+Math.floor(highScore),10,80);
+    context.fillText("Best: "+Math.floor(highScore),10,80);
+
+    context.strokeText("Coins: 💰 "+Math.floor(totalCoins),10,110);
+    context.fillText("Coins: 💰 "+Math.floor(totalCoins),10,110);
+
+    context.font="18px sans-serif";
+    let y=140;
+
+
+    if(hasShield && shieldTimer>0){
+        context.strokeText("🛡️ "+Math.ceil(shieldTimer/60)+"s",10,y);
+        context.fillText("🛡️ "+Math.ceil(shieldTimer/60)+"s",10,y);
+        y+=22;
     }
+    if(hasSlowMotion && slowMotionTimer>0){
+        context.strokeText("⏳ "+Math.ceil(slowMotionTimer/60)+"s",10,y);
+        context.fillText("⏳ "+Math.ceil(slowMotionTimer/60)+"s",10,y);
+        y+=22;
+    }
+    if(hasDoublePoints && doublePointsTimer>0){
+        context.strokeText("✨ "+Math.ceil(doublePointsTimer/60)+"s",10,y);
+        context.fillText("✨ "+Math.ceil(doublePointsTimer/60)+"s",10,y);
+        y+=22;
+    }
+    if(hasMagnet && magnetTimer>0){
+        context.strokeText("🧲 "+Math.ceil(magnetTimer/60)+"s",10,y);
+        context.fillText("🧲 "+Math.ceil(magnetTimer/60)+"s",10,y);
+        y+=22;
+    }
+    
+    // let powerupY=150;
+    // context.font="20px sans-serif";
+    // context.fillStyle="white";
+    // // context.strokeStyle="black";
+    // // context.lineWidth=2;
+
+    // if(hasShield){
+    //     context.strokeText("🛡️ Shield",10,powerupY);
+    //     context.strokeStyle="cyan";
+    //     context.fillText("🛡️ Shield",10,powerupY);
+    //     context.fillStyle="white";
+    //     powerupY+=30;
+    // }
+    // if(hasSlowMotion){
+    //     let timeLeft=Math.ceil(slowMotionTimer/60);
+    //     context.strokeText("⏳ Slow Motion: "+timeLeft+"s",10,powerupY);
+    //     context.fillStyle="#9370DB";
+    //     context.fillText("⏳ Slow Motion: "+timeLeft+"s",10,powerupY);
+    //     context.fillStyle="white";
+    //     powerupY+=30;
+    // }
+    // if(hasDoublePoints){
+    //     let timeLeft=Math.ceil(doublePointsTimer/60);
+    //     context.strokeText("⚡ Double Points: "+timeLeft+"s",10,powerupY);
+    //     context.fillStyle="gold";
+    //     context.fillText("⚡ Double Points: "+timeLeft+"s",10,powerupY);
+    //     context.fillStyle="white";
+    //     powerupY+=30;
+    // }
+    // if(hasMagnet){
+    //     let timeLeft=Math.ceil(magnetTimer/60);
+    //     context.strokeText("🧲 Magnet: "+timeLeft+"s",10,powerupY);
+    //     context.fillStyle="hotpink";
+    //     context.fillText("🧲 Magnet: "+timeLeft+"s",10,powerupY);
+    //     context.fillStyle="white";
+    //     powerupY+=30;
+    // }
 }
 
-function createShieldBreakEffect(){
-    for(let i=0;i<12;i++){
-        coinParticles.push({
-            x:bird.x+bird.width/2,
-            y:bird.y+bird.height/2,
-            vx:Math.cos(i*Math.PI/6)*5,
-            vy:Math.sin(i*Math.PI/6)*5,
-            life:30,
-            color:"#00BFFF"
-        })
-    }
-}
+// let coinParticles=[];
+
+// function createCoinParticles(x,y){
+//     for(let i=0;i<8;i++){
+//         coinParticles.push({
+//             x:x,
+//             y:y,
+//             vx:(Math.random()-0.5)*4,
+//             vy:(Math.random()-0.5)*4,
+//             life:20,
+//             color:"#FFD700"
+//         });
+//     }
+// }
+
+// function createShieldBreakEffect(){
+//     for(let i=0;i<12;i++){
+//         coinParticles.push({
+//             x:bird.x+bird.width/2,
+//             y:bird.y+bird.height/2,
+//             vx:Math.cos(i*Math.PI/6)*5,
+//             vy:Math.sin(i*Math.PI/6)*5,
+//             life:30,
+//             color:"#00BFFF"
+//         })
+//     }
+// }
 
 function placePipes(){
-    if(gameOver || !gameStarted){
+    if(gameOver || !gameStarted || !gameReady){
         return;
     }
 
@@ -1025,7 +1225,11 @@ function placePipes(){
 
     let randomPipeY=pipeY-pipeHeight/4-Math.random()*(pipeHeight/2);
 
+
     let openingSpace=pipeGap;
+
+    lastGapTop=randomPipeY+pipeHeight;
+    lastGapBottom=randomPipeY+pipeHeight+openingSpace;
 
     let topPipe={
         img:topPipeImg,
