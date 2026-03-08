@@ -78,7 +78,12 @@ let powerupSpawnMs=3000;
 let speedMultiplier=1;
 
 
+const POWERUP_DURATION_MS=5000;
+const POWERUP_MESSAGE_MS=1000;
+const INVULNERABLE_MS=250;
 
+const mAGNET_RANGE_PX=200;
+const MAGNET_PULL=0.10;
 
 let jumpSound=new Audio();
 let scoreSound=new Audio();
@@ -125,6 +130,13 @@ let powerupInterval=null;
 
 let lastGapTop=140;
 let lastGapBottom=500;
+
+let powerupMessage=""
+let powerupMessageTimer=0;
+
+function nowMs(){
+    return performance.now();
+}
 
 window.onload=function(){
     board=this.document.getElementById("board");
@@ -405,17 +417,21 @@ function startGame(){
 
         sessionCoins=0;
         shieldRotation=0;
-        invulnerableFrames=0;
-
+        
         hasShield=false;
         hasSlowMotion=false;
         hasDoublePoints=false;
         hasMagnet=false;
-
+        
         shieldTimer=0;
         slowMotionTimer=0;
         doublePointsTimer=0;
         magnetTimer=0;
+
+        invulnerableFrames=0;
+
+        powerupMessage="";
+        powerupMessageUntilMs=0;
 
         speedMultiplier=1;
         applyDifficultySettings();
@@ -624,34 +640,38 @@ function placePowerups(){
     powerupArray.push(powerup);
 }
 
+function showPowerupMessage(msg){
+    powerupMessage=msg;
+    powerupMessageTimer=nowMs()+POWERUP_MESSAGE_MS;
+}
+
 function activePowerup(type){
     playSound(powerupSound);
 
+    const t=nowMs();
+
     if(type==="shield"){
         hasShield=true;
-        shieldTimer=300;
+        shieldTimer=t+POWERUP_DURATION_MS;
         showPowerupMessage("🛡️ Shield Activated!");
     }
     else if(type==="slowmotion"){
         hasSlowMotion=true;
-        slowMotionTimer=300;
+        slowMotionTimer=t+POWERUP_DURATION_MS;
         applySpeedMultiplier(0.5);
         showPowerupMessage("⏳ Slow Motion!");
     }
     else if(type==="doublepoints"){
         hasDoublePoints=true;
-        doublePointsTimer=300;
+        doublePointsTimer=t+POWERUP_DURATION_MS;
         showPowerupMessage("✨ Double Points!");
     }
     else if(type==="magnet"){
         hasMagnet=true;
-        magnetTimer=300;
+        magnetTimer=t+POWERUP_DURATION_MS;
         showPowerupMessage("🧲 Magnet!");
     }
 }
-
-let powerupMessage="";
-let powerupMessageTimer=0;
 
 function showPowerupMessage(msg){
     powerupMessage=msg;
@@ -665,6 +685,24 @@ function update(){
     if(!bgImg || !topPipeImg || !bottomPipeImg){
         return;
     }
+
+    const t=nowMs();
+
+    if(hasShield && t>=shieldTimer){
+        hasShield=false;
+    }
+    if(hasSlowMotion && t>=slowMotionTimer){
+        hasSlowMotion=false;
+        applySpeedMultiplier(1);
+    }
+    if(hasDoublePoints && t>=doublePointsTimer){
+        hasDoublePoints=false;
+    }
+    if(hasMagnet && t>=magnetTimer){
+        hasMagnet=false;
+    }
+
+
     document.body.style.backgroundColor=bgColor;
     context.clearRect(0,0,board.width,board.height);
 
@@ -699,34 +737,34 @@ function update(){
         return;
     }
 
-    if(hasSlowMotion && slowMotionTimer>0){
-        slowMotionTimer--;
-        if(slowMotionTimer==0){
-            hasSlowMotion=false;
-            applySpeedMultiplier(1);
-        }
-    }
+    // if(hasSlowMotion && slowMotionTimer>0){
+    //     slowMotionTimer--;
+    //     if(slowMotionTimer==0){
+    //         hasSlowMotion=false;
+    //         applySpeedMultiplier(1);
+    //     }
+    // }
 
-    if(hasDoublePoints && doublePointsTimer>0){
-        doublePointsTimer--;
-        if(doublePointsTimer==0){
-            hasDoublePoints=false;
-        }
-    }
+    // if(hasDoublePoints && doublePointsTimer>0){
+    //     doublePointsTimer--;
+    //     if(doublePointsTimer==0){
+    //         hasDoublePoints=false;
+    //     }
+    // }
 
-    if(hasMagnet && magnetTimer>0){
-        magnetTimer--;
-        if(magnetTimer===0){
-            hasMagnet=false;
-        }
-    }
+    // if(hasMagnet && magnetTimer>0){
+    //     magnetTimer--;
+    //     if(magnetTimer===0){
+    //         hasMagnet=false;
+    //     }
+    // }
 
-    if(hasShield && shieldTimer>0){
-        shieldTimer--;
-        if(shieldTimer===0){
-            hasShield=false;
-        }
-    }
+    // if(hasShield && shieldTimer>0){
+    //     shieldTimer--;
+    //     if(shieldTimer===0){
+    //         hasShield=false;
+    //     }
+    // }
 
     if(gameStarted  && !gameOver){
         bgX+=velocityX;
@@ -757,7 +795,7 @@ function update(){
         }
     }
 
-    if(hasShield && shieldTimer>0){
+    if(hasShield && shieldTimer>t){
         shieldRotation+=0.05;
 
         context.save();
@@ -1008,8 +1046,8 @@ function update(){
             }
 
 
-            if(invulnerableFrames===0 && detectCollision(bird,pipe) && !gameOver){
-                if(hasShield && shieldTimer>0){
+            if(invulnerableFrames<=t && detectCollision(bird,pipe) && !gameOver){
+                if(hasShield && shieldTimer>t){
                     // hasShield=false;
                     invulnerableFrames=10;
                     showPowerupMessage("🛡️ Blocked!");
@@ -1068,7 +1106,7 @@ function update(){
         }
     }
 
-    if(powerupMessageTimer>0){
+    if(powerupMessage && powerupMessageTimer>t){
         context.fillStyle="cyan";
         context.font="bold 35px sans-serif";
         context.textAlign="center";
@@ -1081,7 +1119,7 @@ function update(){
 
     }
 
-    drawHUD();
+    drawHUD(t);
 
 
     if(gameOver){
@@ -1105,7 +1143,7 @@ function update(){
     }
 }
 
-function drawHUD(){
+function drawHUD(t){
     context.fillStyle="white";
     context.strokeStyle="black";
     context.lineWidth=3;
@@ -1127,23 +1165,23 @@ function drawHUD(){
 
 
     if(hasShield && shieldTimer>0){
-        context.strokeText("🛡️ "+Math.ceil(shieldTimer/60)+"s",10,y);
-        context.fillText("🛡️ "+Math.ceil(shieldTimer/60)+"s",10,y);
+        context.strokeText("🛡️ "+Math.ceil((shieldTimer-t)/1000)+"s",10,y);
+        context.fillText("🛡️ "+Math.ceil((shieldTimer-t)/1000)+"s",10,y);
         y+=22;
     }
     if(hasSlowMotion && slowMotionTimer>0){
-        context.strokeText("⏳ "+Math.ceil(slowMotionTimer/60)+"s",10,y);
-        context.fillText("⏳ "+Math.ceil(slowMotionTimer/60)+"s",10,y);
+        context.strokeText("⏳ "+Math.ceil((slowMotionTimer-t)/1000)+"s",10,y);
+        context.fillText("⏳ "+Math.ceil((slowMotionTimer-t)/1000)+"s",10,y);
         y+=22;
     }
     if(hasDoublePoints && doublePointsTimer>0){
-        context.strokeText("✨ "+Math.ceil(doublePointsTimer/60)+"s",10,y);
-        context.fillText("✨ "+Math.ceil(doublePointsTimer/60)+"s",10,y);
+        context.strokeText("✨ "+Math.ceil((doublePointsTimer-t)/1000)+"s",10,y);
+        context.fillText("✨ "+Math.ceil((doublePointsTimer-t)/1000)+"s",10,y);
         y+=22;
     }
     if(hasMagnet && magnetTimer>0){
-        context.strokeText("🧲 "+Math.ceil(magnetTimer/60)+"s",10,y);
-        context.fillText("🧲 "+Math.ceil(magnetTimer/60)+"s",10,y);
+        context.strokeText("🧲 "+Math.ceil((magnetTimer-t)/1000)+"s",10,y);
+        context.fillText("🧲 "+Math.ceil((magnetTimer-t)/1000)+"s",10,y);
         y+=22;
     }
     
