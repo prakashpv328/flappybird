@@ -15,11 +15,9 @@ body{
 .game-container{
     position:relative;
     display: inline-block;
-    margin-top:20px;
 }
 #board{
     background-color:transparent;
-    /* background-image:url("./flappybirdbg.png"); */
     box-shadow:0 0 20px rgba(0,0,0,0.5);
 
     display: block;
@@ -51,6 +49,7 @@ body{
     top: 10px;
     right: 10px;
     display: flex;
+    flex-direction:column;
     gap: 10px;
     z-index: 995;
 }
@@ -136,11 +135,18 @@ body{
     font-size:18px;
     font-weight:bold;
     border:3px solid transparent;
+    border-radius: 12px;
     cursor:pointer;
     transition: all 0.3s ease;
     background:white;
     color: #333;
     min-width:120px;
+}
+
+.theme-option-btn.active{
+    border-color:#FFD700;
+    box-shadow:0 0 15px rgba(255.215,0,0.6);
+    transform:scale(1.05); 
 }
 
 .theme-option-btn:hover{
@@ -215,7 +221,6 @@ body{
 
 #closeSettingsBtn,
 #closeHistoryBtn{
-    margin-top:20px;
     padding: 12px 40px;
     font-size:20px;
     background-color: #4CAF50;
@@ -227,6 +232,9 @@ body{
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     transition:all 0.3s ease;
     width:100%;
+}
+#closeHistoryBtn{
+    margin-top:20px;
 }
 
 #closeSettingsBtn:hover,
@@ -249,7 +257,32 @@ body{
     padding:12px;
     margin-bottom:10px;
     border-radius:5px;
-    text-align:center;
+    text-align:left;
+}
+
+.history-header{
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    margin-top:8px;
+}
+
+.history-left-info{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+}
+
+.history-meta{
+    font-size:14px;
+    color:#333;
+}
+
+.history-right-info{
+    display:flex;
+    flex-direction:column;
+    gap: 5px;
+    /* align-items:center; */
 }
 
 .history-item:last-child{
@@ -386,9 +419,13 @@ body{
     font-size:36px;
 }
 
-#gameOverPopup p{
-    font-size:24px;
-    margin:15px 0;
+.game-over-stats{
+    margin:20px 0px;
+}
+
+#game-over-stats p{
+    font-size:20px;
+    margin:12px 0;
     color: #333;
 }
 
@@ -415,7 +452,7 @@ body{
 }
 
 #restartBtn,
-#backToMenuBtn{ 
+#backToLobbyBtn{ 
     padding:15px 30px;
     font-size:18px;
     color:white;

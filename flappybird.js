@@ -17,7 +17,7 @@ let oasisBottomPipe;
 let desertTopPipe;
 let desertBottomPipe;
 
-let currentTheme="";
+let currentTheme="oasis";
 
 //bird
 let birdWidth=34;
@@ -82,7 +82,7 @@ const POWERUP_DURATION_MS=5000;
 const POWERUP_MESSAGE_MS=1000;
 const INVULNERABLE_MS=250;
 
-const mAGNET_RANGE_PX=200;
+const MAGNET_RANGE_PX=200;
 const MAGNET_PULL=0.10;
 
 let jumpSound=new Audio();
@@ -134,8 +134,110 @@ let lastGapBottom=500;
 let powerupMessage=""
 let powerupMessageTimer=0;
 
+let inLobby=true;
+
 function nowMs(){
     return performance.now();
+}
+
+function saveGameHistory(score,coins){
+    let history=JSON.parse(localStorage.getItem('flappyBirdHistory')||'[]');
+
+    const gameData={
+        score:Math.floor(score),
+        coins:Math.floor(coins),
+        date:new Date().toISOString(),
+        difficulty:difficulty,
+        theme:currentTheme
+    };
+
+    history.unshift(gameData);
+
+    if(history.length>50){
+        history=history.slice(0,50);
+    }
+    localStorage.setItem('flappyBirdHistory',JSON.stringify(history));
+}
+
+function loadGameHistory(){
+    return JSON.parse(localStorage.getItem('flappyBirdHistory')||'[]');
+}
+
+function clearGameHistory(){
+    if(confirm('Are you sure ? This is not reversible.')){
+        localStorage.removeItem('flappyBirdHistory');
+        alert('Game history cleared!');
+        displayGameHistory();
+    }
+}
+
+function resetAllData(){
+    if(confirm('This will delete Entire Data,This is not reversible')){
+        localStorage.removeItem('flappyBirdHistory');
+        localStorage.removeItem('flappyBirdHighScore');
+        localStorage.removeItem("totalCoins");
+
+        highScore=0;
+        totalCoins=0;
+
+        updateLobbyStats();
+        displayHistory();
+        
+        alert('All data reset');
+        closeSettings();
+    }
+}
+
+function displayHistory(){
+    const historyList=document.getElementById('historyList');
+    const history=loadGameHistory();
+
+    if(history.length===0){
+        historyList.innerHTML='<p class="no-history">NO Games played<p>';
+        return ;
+    }
+    historyList.innerHTML='';
+
+    history.forEach((game,index)=>{
+        const gameDate=new Date(game.date);
+        const formattedDate=gameDate.toLocaleDateString()+' '+gameDate.toLocaleTimeString();
+
+        const historyItem=document.createElement('div');
+        historyItem.className='history-item';
+
+        historyItem.innerHTML=`
+        <div class="history-date">${formattedDate}</div>
+
+        <div class="history-header">
+            <div class="history-left-info">
+                <span class="history-meta">${getDifficultyEmoji(game.difficulty)}${game.difficulty.toUpperCase()}</span>
+                <span class="history-meta">${getThemeEmoji(game.theme)}${game.theme.toUpperCase()}</span>
+            </div>
+            <div class="history-right-info">
+                <span class="history-score">🪙 Score: ${game.score}</span>
+                <span class="history-coins">💰 Coins: ${game.coins}</span>
+            </div>
+        </div>
+        `;
+        historyList.appendChild(historyItem);
+    })
+}
+
+function getDifficultyEmoji(difficulty){
+    switch(difficulty){
+        case 'easy':return '🟢';
+        case 'medium':return '🟡';
+        case 'hard':return '🔴';
+        default:return '⚪';
+    }
+}
+
+function getThemeEmoji(theme){
+    switch(theme){
+        case 'oasis':return '🌴';
+        case 'desert':return '🏜️';
+        default:return '🎨';
+    }
 }
 
 window.onload=function(){
@@ -207,29 +309,31 @@ window.onload=function(){
     bgMusic.volume=0.3;
 
     totalCoins=parseInt(localStorage.getItem('totalCoins')) || 0;
-    updateCoinDisplay();
+    highScore=parseInt(localStorage.getItem('flappyBirdHighScore'))||0;
+    updateLobbyStats();
+    applyTheme(currentTheme);
 
     // document.getElementById("totalCoinsDisplay").style.display="block";
 
-    if(this.document.getElementById("themePopup")){
-        this.document.getElementById("themePopup").style.display="block";
-    }
+    // if(this.document.getElementById("themePopup")){
+    //     this.document.getElementById("themePopup").style.display="block";
+    // }
 
-    if(this.document.getElementById("difficultyMenu")){
-        this.document.getElementById("difficultyMenu").style.display="none";
-    }
-    if(this.document.getElementById("difficultyMenu")){
-        this.document.getElementById("difficultyMenu").style.display="none"
-    }
-    if(this.document.getElementById("instructions")){
-        this.document.getElementById("instructions").style.display="none";
-    }
-    if(this.document.getElementById("pauseMenu")){
-        this.document.getElementById("pauseMenu").style.display="none";
-    }
-    if(this.document.getElementById("gameOverPopup")){
-        this.document.getElementById("gameOverPopup").style.display="none";
-    }
+    // if(this.document.getElementById("difficultyMenu")){
+    //     this.document.getElementById("difficultyMenu").style.display="none";
+    // }
+    // if(this.document.getElementById("difficultyMenu")){
+    //     this.document.getElementById("difficultyMenu").style.display="none"
+    // }
+    // if(this.document.getElementById("instructions")){
+    //     this.document.getElementById("instructions").style.display="none";
+    // }
+    // if(this.document.getElementById("pauseMenu")){
+    //     this.document.getElementById("pauseMenu").style.display="none";
+    // }
+    // if(this.document.getElementById("gameOverPopup")){
+    //     this.document.getElementById("gameOverPopup").style.display="none";
+    // }
 
     // requestAnimationFrame(update);
     // setInterval(placePipes,1500); //every 1.5 seconds
@@ -237,21 +341,70 @@ window.onload=function(){
 
     this.document.getElementById("startBtn").addEventListener("click",startGame);
     this.document.getElementById("restartBtn").addEventListener("click",restartGame);
+    this.document.getElementById("backToLobbyBtn").addEventListener("click",backToLobby)
 
-    this.document.getElementById("oasisBtn").addEventListener("click",()=>selectTheme("oasis"));
-    this.document.getElementById("desertBtn").addEventListener("click",()=>selectTheme("desert"));
+    this.document.getElementById("settingsBtn").addEventListener("click",openSettings);
+    this.document.getElementById("closeSettingsBtn").addEventListener("click",closeSettings);
 
-    this.document.getElementById("easyBtn").addEventListener("click",()=>setDifficulty("easy"));
-    this.document.getElementById("mediumBtn").addEventListener("click",()=>setDifficulty("medium"));
-    this.document.getElementById("hardBtn").addEventListener("click",()=>setDifficulty("hard"));
+    this.document.getElementById("historyBtn").addEventListener("click",openHistory);
+    this.document.getElementById("closeHistoryBtn").addEventListener("click",closeHistory);
 
+
+
+    this.document.getElementById("settingsOasisBtn").addEventListener("click",()=>changeTheme("oasis"));
+    this.document.getElementById("settingsDesertBtn").addEventListener("click",()=>changeTheme("desert"));
+
+    this.document.getElementById("settingsEasyBtn").addEventListener("click",()=>setDifficulty("easy"));
+    this.document.getElementById("settingsMediumBtn").addEventListener("click",()=>setDifficulty("medium"));
+    this.document.getElementById("settingsHardBtn").addEventListener("click",()=>setDifficulty("hard"));
+
+    this.document.getElementById("clearHistoryBtn").addEventListener("click",clearGameHistory);
+    this.document.getElementById("resetAllBtn").addEventListener("click",resetAllData);
     this.document.getElementById("resumeBtn").addEventListener("click",togglePause);
 
-    applyDifficultySettings();
+
+    updateDifficultyButtons();
+    updateThemeButtons();
+
+    if(!animationStarted){
+        animationStarted=true;
+        requestAnimationFrame(update);
+    }
+}
+
+function updateLobbyStats(){
+    if(document.getElementById("lobbyBestScore")){
+        document.getElementById("lobbyBestScore").innerText=Math.floor(highScore);
+    }
+    if(document.getElementById("lobbyTotalCoins")){
+        document.getElementById("lobbyTotalCoins").innerText=Math.floor(totalCoins);
+    }
+}
+
+function openSettings(){
+    document.getElementById("settingsPopup").style.display='flex';
+}
+function closeSettings(){
+    document.getElementById("settingsPopup").style.display="none";
+}
+
+function openHistory(){
+    displayHistory();
+    document.getElementById("historyPopup").style.display="flex";
+}
+
+function closeHistory(){
+    document.getElementById("historyPopup").style.display="none";
+}
+
+function changeTheme(theme){
+    currentTheme=theme;
+    applyTheme(theme);
+    updateThemeButtons();
 }
 
 
-function selectTheme(theme){
+function applyTheme(theme){
     currentTheme=theme;
 
     if(theme==="oasis"){
@@ -269,25 +422,49 @@ function selectTheme(theme){
 
     document.body.style.backgroundColor=bgColor;
 
-    document.getElementById("themePopup").style.display="none";
-    document.getElementById("startBtn").style.display="block";
-    document.getElementById("difficultyMenu").style.display="block";
-
     bgX=0;
     bgX2=boardWidth;
 
-    if(!animationStarted){
-        animationStarted=true;
-        requestAnimationFrame(update);
+    // if(!animationStarted){
+    //     animationStarted=true;
+    //     requestAnimationFrame(update);
+    // }
+}
+
+function updateThemeButtons(){
+    document.querySelectorAll(".theme-option-btn").forEach(btn=>{
+        btn.classList.remove("active");
+    })
+    if(currentTheme==="oasis"){
+        document.getElementById("settingsOasisBtn").classList.add("active");
+    }
+    else if(currentTheme==="desert"){
+        document.getElementById("settingsDesertBtn").classList.add("active");
+    }
+}
+
+function updateDifficultyButtons(){
+    document.querySelectorAll(".difficulty-option-btn").forEach(btn=>{
+        btn.classList.remove("active");
+    })
+
+    if(difficulty==="easy"){
+        document.getElementById("settingsEasyBtn").classList.add("active");
+    }
+    else if(difficulty==="medium"){
+        document.getElementById("settingsMediumBtn").classList.add("active");
+    }
+    else if(difficulty==="hard"){
+        document.getElementById("settingsHardBtn").classList.add('active');
     }
 }
 
 
-function updateCoinDisplay(){
-    if(document.getElementById("mainCoinDisplay")){
-        document.getElementById("mainCoinDisplay").innerText=totalCoins;
-    }
-}
+// function updateCoinDisplay(){
+//     if(document.getElementById("mainCoinDisplay")){
+//         document.getElementById("mainCoinDisplay").innerText=totalCoins;
+//     }
+// }
 
 function applyDifficultySettings(){
 
@@ -372,11 +549,12 @@ function applySpeedMultiplier(mult){
 function setDifficulty(level){
     difficulty=level;
     applyDifficultySettings();
+    updateDifficultyButtons();
 
-     document.querySelectorAll(".difficulty-btn").forEach(btn=>{
-        btn.classList.remove("active");
-     })
-     document.getElementById(level+"Btn").classList.add("active");
+    //  document.querySelectorAll(".difficulty-btn").forEach(btn=>{
+    //     btn.classList.remove("active");
+    //  })
+    //  document.getElementById(level+"Btn").classList.add("active");
 
      if(gameStarted && gameReady && !gameOver){
         startAllIntervals();
@@ -387,6 +565,7 @@ function setDifficulty(level){
 
 function startGame(){
     if(!gameStarted){
+        inLobby=false;
         gameStarted=true;
         gameReady=false;
         gameOver=false;
@@ -431,7 +610,7 @@ function startGame(){
         invulnerableFrames=0;
 
         powerupMessage="";
-        powerupMessageUntilMs=0;
+        powerupMessageTimer=0;
 
         speedMultiplier=1;
         applyDifficultySettings();
@@ -447,13 +626,55 @@ function startGame(){
         document.body.style.backgroundColor=bgColor;
 
         document.getElementById("startBtn").style.display="none";
-        document.getElementById("difficultyMenu").style.display="none";
+        document.querySelector(".lobby-stats").style.display="none";
+        document.querySelector(".top-right-buttons").style.display="none";
+        document.querySelector(".powerup-legend").style.display="block";
         document.getElementById("instructions").style.display="block";
         document.getElementById("gameOverPopup").style.display="none";
         document.getElementById("pauseMenu").style.display="none";
         // pipeInterval=setInterval(placePipes,1500);
         playSound(bgMusic);
     }
+}
+
+function backToLobby(){
+    inLobby =true;
+    gameStarted=false;
+    gameReady=false;
+    gameOver=false;
+    gamePaused=false;
+
+    clearAllIntervals();
+
+    bgMusic.pause();
+    bgMusic.currentTime=0;
+
+    bird.x=birdX;
+    bird.y=birdY;
+    bgX=0;
+    bgX2=boardWidth;
+
+    pipeArray=[];
+    coinArray=[];
+    powerupArray=[];
+
+    score=0;
+    velocityY=0;
+    currentFrame=0;
+    frameCount=0;
+
+
+    applyTheme(currentTheme);
+    applyDifficultySettings();
+    updateLobbyStats();
+
+    document.getElementById('startBtn').style.display="block";
+    document.querySelector(".lobby-stats").style.display="flex";
+    document.querySelector(".top-right-buttons").style.display="flex";
+    document.querySelector(".powerup-legend").style.display="none";
+    document.getElementById("instructions").style.display="none";
+    document.getElementById("gameOverPopup").style.display="none";
+    document.getElementById("pauseMenu").style.display="none";
 }
 
 function restartGame(){
@@ -673,11 +894,6 @@ function activePowerup(type){
     }
 }
 
-function showPowerupMessage(msg){
-    powerupMessage=msg;
-    powerupMessageTimer=60;
-}
-
 
 function update(){
     requestAnimationFrame(update);
@@ -725,7 +941,7 @@ function update(){
             context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
         }
 
-        drawHUD();
+        drawHUD(t);
 
         // context.fillStyle="white";
         // context.font="45px sans-serif";
@@ -844,6 +1060,8 @@ function update(){
         bgMusic.pause();
         bgMusic.currentTime=0;
         clearAllIntervals();
+
+        saveGameHistory(score,sessionCoins);
     }
 
     if(gameStarted && gameReady && !gameOver){
@@ -857,7 +1075,7 @@ function update(){
                 let dy=(bird.y+bird.height/2)-(coin.y+coin.height/2);
                 let distance=Math.sqrt(dx*dx+dy*dy);
 
-                if(distance<200){
+                if(distance<MAGNET_RANGE_PX){
                     coin.x+=dx*0.1;
                     coin.y+=dy*0.1;
 
@@ -911,7 +1129,7 @@ function update(){
                 sessionCoins++;
                 totalCoins++;
                 localStorage.setItem('totalCoins',totalCoins);
-                updateCoinDisplay();
+                // updateCoinDisplay();
 
                 playSound(coinSound)
                 // createCoinParticles(coin.x,coin.y);
@@ -995,7 +1213,7 @@ function update(){
             context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
 
             if(!pipe.passed && bird.x>pipe.x+pipe.width){
-                let points=(hasDoublePoints && doublePointsTimer)?1:0.5;
+                let points=(hasDoublePoints && doublePointsTimer>nowMs())?1:0.5;
                 score+=points; 
                 pipe.passed=true;
 
@@ -1046,7 +1264,7 @@ function update(){
             }
 
 
-            if(invulnerableFrames<=t && detectCollision(bird,pipe) && !gameOver){
+            if(invulnerableFrames<=0 && detectCollision(bird,pipe) && !gameOver){
                 if(hasShield && shieldTimer>t){
                     // hasShield=false;
                     invulnerableFrames=10;
@@ -1068,6 +1286,8 @@ function update(){
                     bgMusic.pause();
                     bgMusic.currentTime=0;
                     clearAllIntervals();
+
+                    saveGameHistory(score,sessionCoins);
                 }
                 
             }
@@ -1115,11 +1335,12 @@ function update(){
         context.strokeText(powerupMessage,board.width/2,board.height/2+100);
         context.fillText(powerupMessage,board.width/2,board.height/2+100);
         context.textAlign="left";
-        powerupMessageTimer--;
 
     }
-
-    drawHUD(t);
+     
+    if(gameStarted && gameReady && !gameOver){
+        drawHUD(t);
+    }
 
 
     if(gameOver){
@@ -1149,19 +1370,19 @@ function drawHUD(t){
     context.lineWidth=3;
 
     context.font="45px sans-serif";
-    context.fillText("🪙 "+Math.floor(score),10,45);
     context.strokeText("🪙 "+Math.floor(score),10,45);
+    context.fillText("🪙 "+Math.floor(score),10,45);
 
 
-    context.font="25px sans-serif";
-    context.strokeText("Best: "+Math.floor(highScore),10,80);
-    context.fillText("Best: "+Math.floor(highScore),10,80);
+    // context.font="25px sans-serif";
+    // context.strokeText("Best: "+Math.floor(highScore),10,80);
+    // context.fillText("Best: "+Math.floor(highScore),10,80);
 
-    context.strokeText("Coins: 💰 "+Math.floor(totalCoins),10,110);
-    context.fillText("Coins: 💰 "+Math.floor(totalCoins),10,110);
+    // context.strokeText("Coins: 💰 "+Math.floor(totalCoins),10,110);
+    // context.fillText("Coins: 💰 "+Math.floor(totalCoins),10,110);
 
     context.font="18px sans-serif";
-    let y=140;
+    let y=80;
 
 
     if(hasShield && shieldTimer>0){
