@@ -362,17 +362,19 @@ window.onload=function(){
     this.document.getElementById("resetAllBtn").addEventListener("click",resetAllData);
     // this.document.getElementById("resumeBtn").addEventListener("click",togglePause);
 
-    board.addEventListener("click",function(event){
-        if(!gameStarted || !gameReady ||gameOver) return ;
+    // board.addEventListener("click",function(event){
+    //     if(!gameStarted || !gameReady ||gameOver) return ;
 
-        const rect=board.getBoundingClientRect();
-        const x=event.clientX-rect.left;
-        const y=event.clientY-rect.top;
+    //     const rect=board.getBoundingClientRect();
+    //     const x=event.clientX-rect.left;
+    //     const y=event.clientY-rect.top;
 
-        if(x>=10 && x<60 && y>=60 && y<=110){
-            togglePause();
-        }
-    });
+    //     console.log(`clicked at:x=${x},y=${y}`);
+
+    //     if(x>=0 && x<70 && y>=50 && y<=120){
+    //         togglePause();
+    //     }
+    // });
 
     updateDifficultyButtons();
     updateThemeButtons();
