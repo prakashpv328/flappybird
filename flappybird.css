@@ -113,7 +113,7 @@ body{
 }
 
 .settings-section{
-    margin-bottom:25px;
+    margin-bottom:15px;
 }
 
 .settings-section h3{
@@ -363,7 +363,7 @@ body{
     25%, 75% {opacity:0.5;}
 }
 
-#pauseMenu{
+/* #pauseMenu{
     display: none;
     position: fixed;
     top: 50%;
@@ -374,15 +374,15 @@ body{
     border-radius: 15px;
     box-shadow: 0 0 30px rgba(0 ,0,0,0.7);
     z-index:1000;
-}
+} */
 
-#pauseMenu h1{
+/* #pauseMenu h1{
     color:#2196F3;
     margin:0 0 20px 0;
     font-size:36px;
-}
+} */
 
-#resumeBtn{
+/* #resumeBtn{
     padding:15px 40px;
     font-size:20px;
     background-color: #4CAF50;
@@ -397,7 +397,7 @@ body{
 #resumeBtn:hover{
     background-color: #45a049;
     transform: scale(1.05);
-}
+} */
 
 #gameOverPopup{
     display:none;
@@ -489,7 +489,7 @@ body{
 
 
 .powerup-legend{
-    display: none;
+    display: block;
     position:fixed;
     top:20px;
     right:20px;

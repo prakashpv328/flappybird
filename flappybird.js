@@ -251,44 +251,44 @@ window.onload=function(){
     //context.fillRect(birdImg,bird.x,bird.y,bird.width,bird.height);
 
     oasisBg=new Image();
-    oasisBg.src="./flappybirdbg.png";
+    oasisBg.src="./Images/flappybirdbg.png";
     // oasisBg.onload=function(){
     //     bgX=0;
     //     bgX2=boardWidth;
     // }
 
     oasisTopPipe=new Image();
-    oasisTopPipe.src="./toppipe.png";
+    oasisTopPipe.src="./Images/toppipe.png";
     
     oasisBottomPipe=new Image();
-    oasisBottomPipe.src="./bottompipe.png";
+    oasisBottomPipe.src="./Images/bottompipe.png";
 
 
     desertBg=new Image();
-    desertBg.src="./desert_bg1.jpg";
+    desertBg.src="./Images/desert_bg1.jpg";
     // desertBg.onload=function(){
     //     bgX=0;
     //     bgX2=boardWidth;
     // }
 
     desertTopPipe=new Image();
-    desertTopPipe.src="./dessert_pipe_top.png";
+    desertTopPipe.src="./Images/desert_pipe_top.png";
 
     desertBottomPipe=new Image();
-    desertBottomPipe.src="./dessert_pipe_bottom.png";
+    desertBottomPipe.src="./Images/desert_pipe_bottom.png";
 
 
     birdImg1=new Image();
-    birdImg1.src="./flappybird0.png";
+    birdImg1.src="./Images/flappybird0.png";
 
     birdImg2=new Image();
-    birdImg2.src="./flappybird1.png";
+    birdImg2.src="./Images/flappybird1.png";
 
     birdImg3=new Image();
-    birdImg3.src="./flappybird2.png";
+    birdImg3.src="./Images/flappybird2.png";
 
     birdImg4=new Image();
-    birdImg4.src="./flappybird3.png";
+    birdImg4.src="./Images/flappybird3.png";
 
     birdFrames=[birdImg1,birdImg2,birdImg3,birdImg4];
     // birdImg.onload=function(){
@@ -296,14 +296,14 @@ window.onload=function(){
     // }
 
 
-    jumpSound.src = "./sfx_wing.wav";
-    scoreSound.src = "./sfx_point.wav";
-    hitSound.src = "./sfx_hit.wav";
-    dieSound.src = "./sfx_die.wav";
+    jumpSound.src = "./Sounds/sfx_wing.wav";
+    scoreSound.src = "./Sounds/sfx_point.wav";
+    hitSound.src = "./Sounds/sfx_hit.wav";
+    dieSound.src = "./Sounds/sfx_die.wav";
 
-    bgMusic.src = "./bgflappybird.mp3";
-    coinSound.src = "./sfx_point.wav";
-    powerupSound.src="./sfx_swooshing.wav";
+    bgMusic.src = "./Sounds/bgflappybird.mp3";
+    coinSound.src = "./Sounds/sfx_point.wav";
+    powerupSound.src="./Sounds/sfx_swooshing.wav";
 
     bgMusic.loop=true;
     bgMusic.volume=0.3;
@@ -360,8 +360,19 @@ window.onload=function(){
 
     this.document.getElementById("clearHistoryBtn").addEventListener("click",clearGameHistory);
     this.document.getElementById("resetAllBtn").addEventListener("click",resetAllData);
-    this.document.getElementById("resumeBtn").addEventListener("click",togglePause);
+    // this.document.getElementById("resumeBtn").addEventListener("click",togglePause);
 
+    board.addEventListener("click",function(event){
+        if(!gameStarted || !gameReady ||gameOver) return ;
+
+        const rect=board.getBoundingClientRect();
+        const x=event.clientX-rect.left;
+        const y=event.clientY-rect.top;
+
+        if(x>=10 && x<60 && y>=60 && y<=110){
+            togglePause();
+        }
+    });
 
     updateDifficultyButtons();
     updateThemeButtons();
@@ -631,7 +642,7 @@ function startGame(){
         document.querySelector(".powerup-legend").style.display="block";
         document.getElementById("instructions").style.display="block";
         document.getElementById("gameOverPopup").style.display="none";
-        document.getElementById("pauseMenu").style.display="none";
+        // document.getElementById("pauseMenu").style.display="none";
         // pipeInterval=setInterval(placePipes,1500);
         playSound(bgMusic);
     }
@@ -674,7 +685,7 @@ function backToLobby(){
     document.querySelector(".powerup-legend").style.display="none";
     document.getElementById("instructions").style.display="none";
     document.getElementById("gameOverPopup").style.display="none";
-    document.getElementById("pauseMenu").style.display="none";
+    // document.getElementById("pauseMenu").style.display="none";
 }
 
 function restartGame(){
@@ -737,19 +748,17 @@ function restartGame(){
 }
 
 function togglePause(){
-    if(!gameStarted || gameOver){
+    if(!gameStarted || gameOver || !gameReady){
         return;
     }
 
     gamePaused=!gamePaused;
 
     if(gamePaused){
-        document.getElementById("pauseMenu").style.display="block";
         bgMusic.pause();
         clearAllIntervals();
     }
     else{
-        document.getElementById("pauseMenu").style.display="none";
         playSound(bgMusic);
 
         if(gameReady){
@@ -764,7 +773,7 @@ function playSound(audio){
 }
 
 function handleKeyPress(e){
-    if(e.code=="KeyP"){
+    if(e.code=="Space" && gameStarted && gameReady && !gameOver){
         togglePause();
         return;
     }
@@ -781,7 +790,7 @@ function handleKeyPress(e){
     }
 
 
-    if((e.code=="Space" || e.code=="ArrowUp" || e.code=="KeyX") && gameStarted && !gameOver && !gamePaused){
+    if(( e.code=="ArrowUp" || e.code=="KeyW") && gameStarted && !gameOver && !gamePaused){
         if(!gameReady){
             gameReady=true;
             velocityY=0;
@@ -1271,7 +1280,7 @@ function update(){
                     showPowerupMessage("🛡️ Blocked!");
                     playSound(powerupSound);
                     // createShieldBreakEffect();
-                    bird.x=Math.max(bird.x-8,0);
+                    // bird.x=Math.max(bird.x-8,0);
                 }
                 else{
                     gameOver=true;
@@ -1369,9 +1378,16 @@ function drawHUD(t){
     context.strokeStyle="black";
     context.lineWidth=3;
 
-    context.font="45px sans-serif";
+    context.font="30px sans-serif";
     context.strokeText("🪙 "+Math.floor(score),10,45);
     context.fillText("🪙 "+Math.floor(score),10,45);
+
+    if(gameStarted && gameReady){
+        context.font="35px sans-serif";
+        let pauseIcon=gamePaused?"▶️":"⏸️";
+        context.strokeText(pauseIcon,10,90);
+        context.fillText(pauseIcon,10,90);
+    }
 
 
     // context.font="25px sans-serif";
@@ -1382,7 +1398,7 @@ function drawHUD(t){
     // context.fillText("Coins: 💰 "+Math.floor(totalCoins),10,110);
 
     context.font="18px sans-serif";
-    let y=80;
+    let y=130;
 
 
     if(hasShield && shieldTimer>0){
