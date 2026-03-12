@@ -124,9 +124,13 @@ let animationStarted=false;
 
 let invulnerableFrames=0;
 
-let pipeInterval=null;
-let coinInterval=null;
-let powerupInterval=null;
+let lastPipeSpawn=0;
+let lastCoinSpawn=0;
+let lastPowerupSpawn=0;
+
+// let pipeInterval=null;
+// let coinInterval=null;
+// let powerupInterval=null;
 
 let lastGapTop=140;
 let lastGapBottom=500;
@@ -135,6 +139,39 @@ let powerupMessage=""
 let powerupMessageTimer=0;
 
 let inLobby=true;
+
+let domCache={};
+
+function cacheDOMElements(){
+    domCache.startBtn=document.getElementById("startBtn");
+    domCache.restartBtn=document.getElementById("restartBtn");
+    domCache.backToLobbyBtn=document.getElementById("backToLobbyBtn");
+    domCache.settingsBtn=document.getElementById("settingsBtn");
+    domCache.closeSettingsBtn=document.getElementById("closeSettingsBtn");
+    domCache.historyBtn=document.getElementById("historyBtn");
+    domCache.closeHistoryBtn=document.getElementById("closeHistoryBtn");
+    domCache.settingsOasisBtn=document.getElementById("settingsOasisBtn");
+    domCache.settingsDesertBtn=document.getElementById("settingsDesertBtn");
+    domCache.settingsEasyBtn=document.getElementById("settingsEasyBtn");
+    domCache.settingsMediumBtn=document.getElementById("settingsMediumBtn");
+    domCache.settingsHardBtn=document.getElementById("settingsHardBtn");
+    domCache.clearHistoryBtn=document.getElementById("clearHistoryBtn");
+    domCache.resetAllBtn=document.getElementById("resetAllBtn");
+    domCache.instructions=document.getElementById("instructions");
+    domCache.settingsPopup=document.getElementById("settingsPopup");
+    domCache.historyPopup=document.getElementById("historyPopup");
+    domCache.historyList=document.getElementById("historyList");
+    domCache.lobbyBestScore=document.getElementById("lobbyBestScore");
+    domCache.lobbyTotalCoins=document.getElementById("lobbyTotalCoins");
+    domCache.lobbyStats=document.querySelector(".lobby-stats");
+    domCache.topRightButtons=document.querySelector(".top-right-buttons");
+    domCache.powerupLegend=document.querySelector(".powerup-legend");
+    domCache.gameOverPopup=document.getElementById("gameOverPopup");
+    domCache.finalScore=document.getElementById("finalScore");
+    domCache.coinsThisGame=document.getElementById("coinsThisGame");
+    domCache.totalCoinsDisplay=document.getElementById("totalCoinsDisplay");
+    domCache.highScoreMessage=document.getElementById("highScoreMessage");
+}
 
 function nowMs(){
     return performance.now();
@@ -167,7 +204,7 @@ function clearGameHistory(){
     if(confirm('Are you sure ? This is not reversible.')){
         localStorage.removeItem('flappyBirdHistory');
         alert('Game history cleared!');
-        displayGameHistory();
+        displayHistory();
     }
 }
 
@@ -189,7 +226,7 @@ function resetAllData(){
 }
 
 function displayHistory(){
-    const historyList=document.getElementById('historyList');
+    const historyList=domCache.historyList;
     const history=loadGameHistory();
 
     if(history.length===0){
@@ -197,6 +234,8 @@ function displayHistory(){
         return ;
     }
     historyList.innerHTML='';
+
+    const fragment=document.createDocumentFragment();
 
     history.forEach((game,index)=>{
         const gameDate=new Date(game.date);
@@ -219,8 +258,9 @@ function displayHistory(){
             </div>
         </div>
         `;
-        historyList.appendChild(historyItem);
+        fragment.appendChild(historyItem);
     })
+    historyList.appendChild(fragment);
 }
 
 function getDifficultyEmoji(difficulty){
@@ -246,16 +286,10 @@ window.onload=function(){
     board.width=boardWidth;
     context=board.getContext("2d");
 
-    //draw flappy bird
-    //context.fillStyle="green";
-    //context.fillRect(birdImg,bird.x,bird.y,bird.width,bird.height);
+    cacheDOMElements();
 
     oasisBg=new Image();
     oasisBg.src="./Images/flappybirdbg.png";
-    // oasisBg.onload=function(){
-    //     bgX=0;
-    //     bgX2=boardWidth;
-    // }
 
     oasisTopPipe=new Image();
     oasisTopPipe.src="./Images/toppipe.png";
@@ -266,10 +300,6 @@ window.onload=function(){
 
     desertBg=new Image();
     desertBg.src="./Images/desert_bg1.jpg";
-    // desertBg.onload=function(){
-    //     bgX=0;
-    //     bgX2=boardWidth;
-    // }
 
     desertTopPipe=new Image();
     desertTopPipe.src="./Images/desert_pipe_top.png";
@@ -291,10 +321,6 @@ window.onload=function(){
     birdImg4.src="./Images/flappybird3.png";
 
     birdFrames=[birdImg1,birdImg2,birdImg3,birdImg4];
-    // birdImg.onload=function(){
-    //     context.drawImage(birdImg,bird.x,bird.y,bird.width,bird.height);
-    // }
-
 
     jumpSound.src = "./Sounds/sfx_wing.wav";
     scoreSound.src = "./Sounds/sfx_point.wav";
@@ -313,68 +339,24 @@ window.onload=function(){
     updateLobbyStats();
     applyTheme(currentTheme);
 
-    // document.getElementById("totalCoinsDisplay").style.display="block";
 
-    // if(this.document.getElementById("themePopup")){
-    //     this.document.getElementById("themePopup").style.display="block";
-    // }
-
-    // if(this.document.getElementById("difficultyMenu")){
-    //     this.document.getElementById("difficultyMenu").style.display="none";
-    // }
-    // if(this.document.getElementById("difficultyMenu")){
-    //     this.document.getElementById("difficultyMenu").style.display="none"
-    // }
-    // if(this.document.getElementById("instructions")){
-    //     this.document.getElementById("instructions").style.display="none";
-    // }
-    // if(this.document.getElementById("pauseMenu")){
-    //     this.document.getElementById("pauseMenu").style.display="none";
-    // }
-    // if(this.document.getElementById("gameOverPopup")){
-    //     this.document.getElementById("gameOverPopup").style.display="none";
-    // }
-
-    // requestAnimationFrame(update);
-    // setInterval(placePipes,1500); //every 1.5 seconds
     this.document.addEventListener("keydown",handleKeyPress);
 
-    this.document.getElementById("startBtn").addEventListener("click",startGame);
-    this.document.getElementById("restartBtn").addEventListener("click",restartGame);
-    this.document.getElementById("backToLobbyBtn").addEventListener("click",backToLobby)
+    domCache.startBtn.addEventListener("click",startGame);
+    domCache.restartBtn.addEventListener("click",restartGame);
+    domCache.backToLobbyBtn.addEventListener("click",backToLobby)
 
-    this.document.getElementById("settingsBtn").addEventListener("click",openSettings);
-    this.document.getElementById("closeSettingsBtn").addEventListener("click",closeSettings);
-
-    this.document.getElementById("historyBtn").addEventListener("click",openHistory);
-    this.document.getElementById("closeHistoryBtn").addEventListener("click",closeHistory);
-
-
-
-    this.document.getElementById("settingsOasisBtn").addEventListener("click",()=>changeTheme("oasis"));
-    this.document.getElementById("settingsDesertBtn").addEventListener("click",()=>changeTheme("desert"));
-
-    this.document.getElementById("settingsEasyBtn").addEventListener("click",()=>setDifficulty("easy"));
-    this.document.getElementById("settingsMediumBtn").addEventListener("click",()=>setDifficulty("medium"));
-    this.document.getElementById("settingsHardBtn").addEventListener("click",()=>setDifficulty("hard"));
-
-    this.document.getElementById("clearHistoryBtn").addEventListener("click",clearGameHistory);
-    this.document.getElementById("resetAllBtn").addEventListener("click",resetAllData);
-    // this.document.getElementById("resumeBtn").addEventListener("click",togglePause);
-
-    // board.addEventListener("click",function(event){
-    //     if(!gameStarted || !gameReady ||gameOver) return ;
-
-    //     const rect=board.getBoundingClientRect();
-    //     const x=event.clientX-rect.left;
-    //     const y=event.clientY-rect.top;
-
-    //     console.log(`clicked at:x=${x},y=${y}`);
-
-    //     if(x>=0 && x<70 && y>=50 && y<=120){
-    //         togglePause();
-    //     }
-    // });
+    domCache.settingsBtn.addEventListener("click",openSettings);
+    domCache.closeSettingsBtn.addEventListener("click",closeSettings);
+    domCache.historyBtn.addEventListener("click",openHistory);
+    domCache.closeHistoryBtn.addEventListener("click",closeHistory);
+    domCache.settingsOasisBtn.addEventListener("click",()=>changeTheme("oasis"));
+    domCache.settingsDesertBtn.addEventListener("click",()=>changeTheme("desert"));
+    domCache.settingsEasyBtn.addEventListener("click",()=>setDifficulty("easy"));
+    domCache.settingsMediumBtn.addEventListener("click",()=>setDifficulty("medium"));
+    domCache.settingsHardBtn.addEventListener("click",()=>setDifficulty("hard"));
+    domCache.clearHistoryBtn.addEventListener("click",clearGameHistory);
+    domCache.resetAllBtn.addEventListener("click",resetAllData);
 
     updateDifficultyButtons();
     updateThemeButtons();
@@ -386,28 +368,28 @@ window.onload=function(){
 }
 
 function updateLobbyStats(){
-    if(document.getElementById("lobbyBestScore")){
-        document.getElementById("lobbyBestScore").innerText=Math.floor(highScore);
+    if(domCache.lobbyBestScore){
+        domCache.lobbyBestScore.innerText=Math.floor(highScore);
     }
-    if(document.getElementById("lobbyTotalCoins")){
-        document.getElementById("lobbyTotalCoins").innerText=Math.floor(totalCoins);
+    if(domCache.lobbyTotalCoins){
+        domCache.lobbyTotalCoins.innerText=Math.floor(totalCoins);
     }
 }
 
 function openSettings(){
-    document.getElementById("settingsPopup").style.display='flex';
+    domCache.settingsPopup.style.display='flex';
 }
 function closeSettings(){
-    document.getElementById("settingsPopup").style.display="none";
+    domCache.settingsPopup.style.display="none";
 }
 
 function openHistory(){
     displayHistory();
-    document.getElementById("historyPopup").style.display="flex";
+    domCache.historyPopup.style.display="flex";
 }
 
 function closeHistory(){
-    document.getElementById("historyPopup").style.display="none";
+    domCache.historyPopup.style.display="none";
 }
 
 function changeTheme(theme){
@@ -437,11 +419,6 @@ function applyTheme(theme){
 
     bgX=0;
     bgX2=boardWidth;
-
-    // if(!animationStarted){
-    //     animationStarted=true;
-    //     requestAnimationFrame(update);
-    // }
 }
 
 function updateThemeButtons(){
@@ -449,10 +426,10 @@ function updateThemeButtons(){
         btn.classList.remove("active");
     })
     if(currentTheme==="oasis"){
-        document.getElementById("settingsOasisBtn").classList.add("active");
+        domCache.settingsOasisBtn.classList.add("active");
     }
     else if(currentTheme==="desert"){
-        document.getElementById("settingsDesertBtn").classList.add("active");
+        domCache.settingsDesertBtn.classList.add("active");
     }
 }
 
@@ -462,28 +439,20 @@ function updateDifficultyButtons(){
     })
 
     if(difficulty==="easy"){
-        document.getElementById("settingsEasyBtn").classList.add("active");
+        domCache.settingsEasyBtn.classList.add("active");
     }
     else if(difficulty==="medium"){
-        document.getElementById("settingsMediumBtn").classList.add("active");
+        domCache.settingsMediumBtn.classList.add("active");
     }
     else if(difficulty==="hard"){
-        document.getElementById("settingsHardBtn").classList.add('active');
+        domCache.settingsHardBtn.classList.add('active');
     }
 }
-
-
-// function updateCoinDisplay(){
-//     if(document.getElementById("mainCoinDisplay")){
-//         document.getElementById("mainCoinDisplay").innerText=totalCoins;
-//     }
-// }
 
 function applyDifficultySettings(){
 
     if(difficulty==="easy"){
         baseVelocityX=-1.5;
-        // velocityX=-1.5;
         pipeGap=boardHeight/3;
         gravity=0.1;
 
@@ -494,7 +463,6 @@ function applyDifficultySettings(){
     }
     else if(difficulty==="medium"){
         baseVelocityX=-2;
-        // velocityX=-2;
         pipeGap=boardHeight/4;
         gravity=0.15;
 
@@ -504,7 +472,6 @@ function applyDifficultySettings(){
     }
     else if(difficulty==="hard"){
         baseVelocityX=-3;
-        // velocityX=-3;
         pipeGap=boardHeight/5;
         gravity=0.2;
 
@@ -515,47 +482,39 @@ function applyDifficultySettings(){
 
     velocityX=baseVelocityX*speedMultiplier;
 
-    // document.querySelectorAll(".difficulty-btn").forEach(btn=> {
-    //     btn.classList.remove("active");
-    // });
-    // document.getElementById(level+"Btn").classList.add("active");
 }
 
-function clearAllIntervals(){
-    if(pipeInterval){
-        clearInterval(pipeInterval);
-        pipeInterval=null;
-    }
-    if(coinInterval){
-        clearInterval(coinInterval);
-        coinInterval=null;
-    }
-    if(powerupInterval){
-        clearInterval(powerupInterval);
-        powerupInterval=null;
-    }
-}
+// function clearAllIntervals(){
+//     if(pipeInterval){
+//         clearInterval(pipeInterval);
+//         pipeInterval=null;
+//     }
+//     if(coinInterval){
+//         clearInterval(coinInterval);
+//         coinInterval=null;
+//     }
+//     if(powerupInterval){
+//         clearInterval(powerupInterval);
+//         powerupInterval=null;
+//     }
+// }
 
-function startAllIntervals(){
-    clearAllIntervals();
+// function startAllIntervals(){
+//     clearAllIntervals();
 
-    const pipeMs=Math.round(pipeSpawnMs/speedMultiplier);
-    const coinMs=Math.round(coinSpawnMs/speedMultiplier);
-    const powerMs=Math.round(powerupSpawnMs/speedMultiplier);
+//     const pipeMs=Math.round(pipeSpawnMs/speedMultiplier);
+//     const coinMs=Math.round(coinSpawnMs/speedMultiplier);
+//     const powerMs=Math.round(powerupSpawnMs/speedMultiplier);
 
 
-    pipeInterval=setInterval(placePipes,pipeMs);
-    coinInterval=setInterval(placeCoins,coinMs);
-    powerupInterval=setInterval(placePowerups,powerMs);
-}
+//     pipeInterval=setInterval(placePipes,pipeMs);
+//     coinInterval=setInterval(placeCoins,coinMs);
+//     powerupInterval=setInterval(placePowerups,powerMs);
+// }
 
 function applySpeedMultiplier(mult){
     speedMultiplier=mult;
     velocityX=baseVelocityX*speedMultiplier;
-
-    if(gameStarted && gameReady && !gameOver && !gamePaused){
-        startAllIntervals();
-    }
 
 }
 
@@ -563,18 +522,7 @@ function setDifficulty(level){
     difficulty=level;
     applyDifficultySettings();
     updateDifficultyButtons();
-
-    //  document.querySelectorAll(".difficulty-btn").forEach(btn=>{
-    //     btn.classList.remove("active");
-    //  })
-    //  document.getElementById(level+"Btn").classList.add("active");
-
-     if(gameStarted && gameReady && !gameOver){
-        startAllIntervals();
-     }
 }
-
-// applyDifficultySettings();
 
 function startGame(){
     if(!gameStarted){
@@ -590,9 +538,9 @@ function startGame(){
         bgX=0;
         bgX2=boardWidth;
 
-        pipeArray=[];
-        coinArray=[];
-        powerupArray=[];
+        pipeArray.length=0;
+        coinArray.length=0;
+        powerupArray.length=0;
 
         score=0;
         velocityY=0;
@@ -628,6 +576,10 @@ function startGame(){
         speedMultiplier=1;
         applyDifficultySettings();
 
+        lastPipeSpawn=0;
+        lastCoinSpawn=0;
+        lastPowerupSpawn=0
+
         
         if(currentTheme==="oasis"){
             bgColor='#70c5ce';
@@ -638,14 +590,12 @@ function startGame(){
 
         document.body.style.backgroundColor=bgColor;
 
-        document.getElementById("startBtn").style.display="none";
-        document.querySelector(".lobby-stats").style.display="none";
-        document.querySelector(".top-right-buttons").style.display="none";
-        document.querySelector(".powerup-legend").style.display="block";
-        document.getElementById("instructions").style.display="block";
-        document.getElementById("gameOverPopup").style.display="none";
-        // document.getElementById("pauseMenu").style.display="none";
-        // pipeInterval=setInterval(placePipes,1500);
+        domCache.startBtn.style.display="none";
+        domCache.lobbyStats.style.display="none";
+        domCache.topRightButtons.style.display="none";
+        domCache.powerupLegend.style.display="block";
+        domCache.instructions.style.display="block";
+        domCache.gameOverPopup.style.display="none";
         playSound(bgMusic);
     }
 }
@@ -657,8 +607,6 @@ function backToLobby(){
     gameOver=false;
     gamePaused=false;
 
-    clearAllIntervals();
-
     bgMusic.pause();
     bgMusic.currentTime=0;
 
@@ -667,9 +615,9 @@ function backToLobby(){
     bgX=0;
     bgX2=boardWidth;
 
-    pipeArray=[];
-    coinArray=[];
-    powerupArray=[];
+    pipeArray.length=0;
+    coinArray.length=0;
+    powerupArray.length=0;
 
     score=0;
     velocityY=0;
@@ -681,71 +629,17 @@ function backToLobby(){
     applyDifficultySettings();
     updateLobbyStats();
 
-    document.getElementById('startBtn').style.display="block";
-    document.querySelector(".lobby-stats").style.display="flex";
-    document.querySelector(".top-right-buttons").style.display="flex";
-    document.querySelector(".powerup-legend").style.display="none";
-    document.getElementById("instructions").style.display="none";
-    document.getElementById("gameOverPopup").style.display="none";
-    // document.getElementById("pauseMenu").style.display="none";
+    domCache.startBtn.style.display="block";
+    domCache.lobbyStats.style.display="flex";
+    domCache.topRightButtons.style.display="flex";
+    domCache.powerupLegend.style.display="none";
+    domCache.instructions.style.display="none";
+    domCache.gameOverPopup.style.display="none";
 }
 
 function restartGame(){
-    // bird.y=birdY;
-    // bird.x=birdX;
-    // pipeArray=[];
-    // coinArray=[];
-    // powerupArray=[];
-    // score=0;
-    // gameOver=false;
-    // velocityY=0;
-    // gameStarted=true;
-    // gameReady=false;
-    // gamePaused=false;
-    // bgX=0;
-    // bgX2=boardWidth;
-    // currentFrame=0;
-    // frameCount=0;
-    // lastMileStone=0;
-    // isNewHighScore=false;
-    // hitSoundPlayed=false;
-    // dieSoundPlayed=false;
-    // sessionCoins=0;
-    // shieldRotation=0;
-    // invulnerableFrames=0;
-
-    // hasShield=false;
-    // hasSlowMotion=false;
-    // hasDoublePoints=false;
-    // hasMagnet=false;
-    // slowMotionTimer=0;
-    // doublePointsTimer=0;
-    // magnetTimer=0;
-
-    // velocityX=baseVelocityX;
-
-    // // if(currentTheme==="oasis"){
-    // //     bgColor='#70c5ce';
-    // // }
-    // // else if(currentTheme==='desert'){
-    // //     bgColor='#f4a460'
-    // // }
-
-    // // document.body.style.backgroundColor=bgColor;
-    
-    // document.getElementById("pauseMenu").style.display="none";
-    // document.getElementById("gameOverPopup").style.display="none";
-    // document.getElementById("instructions").style.display="block";
-
-    // // clearInterval(pipeInterval);
-    // // clearInterval(coinInterval);
-    // // clearInterval(powerupInterval);
-    // // // pipeInterval=setInterval(placePipes,1500);
-    // clearAllIntervals();
-    // playSound(bgMusic);
 
     gameStarted=false;
-    clearAllIntervals();
     startGame();
 }
 
@@ -758,20 +652,15 @@ function togglePause(){
 
     if(gamePaused){
         bgMusic.pause();
-        clearAllIntervals();
     }
     else{
         playSound(bgMusic);
-
-        if(gameReady){
-            startAllIntervals();
-        }
     }
 }
 
 function playSound(audio){
     audio.currentTime=0;
-    audio.play().catch(e=>console.log(e));
+    audio.play().catch(e=>{});
 }
 
 function handleKeyPress(e){
@@ -781,7 +670,7 @@ function handleKeyPress(e){
     }
 
     
-    if((e.code=="Space" || e.code=="Enter") && document.getElementById("startBtn").style.display!="none"){
+    if((e.code=="Space" || e.code=="Enter") && domCache.startBtn.style.display!="none"){
         startGame()
         return;
     }
@@ -796,11 +685,11 @@ function handleKeyPress(e){
         if(!gameReady){
             gameReady=true;
             velocityY=0;
-            document.getElementById("instructions").style.display="none";
-            // pipeInterval=setInterval(placePipes,1500);
-            // coinInterval=setInterval(placeCoins,2000);
-            // powerupInterval=setInterval(placePowerups,3000);
-            startAllIntervals();
+            domCache.instructions.style.display="none";
+            const t=nowMs();
+            lastPipeSpawn=t;
+            lastCoinSpawn=t;
+            lastPowerupSpawn=t;
         }
         else{
             if(difficulty==="easy"){
@@ -905,6 +794,9 @@ function activePowerup(type){
     }
 }
 
+const TWO_PI=Math.PI*2;
+const coinRadius=coinWidth/2;
+
 
 function update(){
     requestAnimationFrame(update);
@@ -914,6 +806,25 @@ function update(){
     }
 
     const t=nowMs();
+
+    if(gameStarted && gameReady && !gameOver && !gamePaused){
+        const pipeMs=pipeSpawnMs/speedMultiplier;
+        const coinMs=coinSpawnMs/speedMultiplier;
+        const powerMs=powerupSpawnMs/speedMultiplier;
+
+        if(t-lastPipeSpawn>=pipeMs){
+            placePipes();
+            lastPipeSpawn=t;
+        }
+        if(t-lastCoinSpawn>=coinMs){
+            placeCoins();
+            lastCoinSpawn=t;
+        }
+        if(t-lastPowerupSpawn>=powerMs){
+            placePowerups();
+            lastPowerupSpawn=t;
+        }
+    }
 
     if(hasShield && t>=shieldTimer){
         hasShield=false;
@@ -930,8 +841,8 @@ function update(){
     }
 
 
-    document.body.style.backgroundColor=bgColor;
-    context.clearRect(0,0,board.width,board.height);
+    // document.body.style.backgroundColor=bgColor;
+    context.clearRect(0,0,boardWidth,boardHeight);
 
     if(invulnerableFrames>0){
         invulnerableFrames--;
@@ -953,45 +864,8 @@ function update(){
         }
 
         drawHUD(t);
-
-        // context.fillStyle="white";
-        // context.font="45px sans-serif";
-        // context.fillText("🪙 "+Math.floor(score),10,45);
-        // context.font="25px sans-serif";
-        // context.fillText("Best: "+Math.floor(highScore),10,80);
-        // context.fillText("Coins: "+Math.floor(totalCoins),10,110);
-
         return;
     }
-
-    // if(hasSlowMotion && slowMotionTimer>0){
-    //     slowMotionTimer--;
-    //     if(slowMotionTimer==0){
-    //         hasSlowMotion=false;
-    //         applySpeedMultiplier(1);
-    //     }
-    // }
-
-    // if(hasDoublePoints && doublePointsTimer>0){
-    //     doublePointsTimer--;
-    //     if(doublePointsTimer==0){
-    //         hasDoublePoints=false;
-    //     }
-    // }
-
-    // if(hasMagnet && magnetTimer>0){
-    //     magnetTimer--;
-    //     if(magnetTimer===0){
-    //         hasMagnet=false;
-    //     }
-    // }
-
-    // if(hasShield && shieldTimer>0){
-    //     shieldTimer--;
-    //     if(shieldTimer===0){
-    //         hasShield=false;
-    //     }
-    // }
 
     if(gameStarted  && !gameOver){
         bgX+=velocityX;
@@ -1033,22 +907,22 @@ function update(){
         context.strokeStyle="rgba(0, 200, 255, 0.8)";
         context.lineWidth=4;
         context.beginPath();
-        context.arc(0,0,28,0,Math.PI*2);
+        context.arc(0,0,28,0,TWO_PI);
         context.stroke();
 
         context.strokeStyle="rgba(100, 150, 255, 0.5)";
         context.lineWidth=2;
         context.beginPath();
-        context.arc(0,0,32,0,Math.PI*2);
+        context.arc(0,0,32,0,TWO_PI);
         context.stroke();
 
         for(let i=0;i<6;i++){
-            let angle=(Math.PI*2/6)*i+shieldRotation;
+            let angle=(TWO_PI/6)*i+shieldRotation;
             let x=Math.cos(angle)*30;
             let y=Math.sin(angle)*30;
             context.fillStyle="rgba(0, 200, 255, 0.6)";
             context.beginPath();
-            context.arc(x,y,3,0,Math.PI*2);
+            context.arc(x,y,3,0,TWO_PI);
             context.fill();
         }
 
@@ -1070,32 +944,33 @@ function update(){
         }
         bgMusic.pause();
         bgMusic.currentTime=0;
-        clearAllIntervals();
 
         saveGameHistory(score,sessionCoins);
     }
 
     if(gameStarted && gameReady && !gameOver){
-        for(let i=0;i<coinArray.length;i++){
+
+        const birdCenterX=bird.x+bird.width/2;
+        const birdCenterY=bird.y+bird.height/2;
+
+        for(let i=coinArray.length-1;i>=0;i--){
             let coin=coinArray[i];
             coin.x+=velocityX;
             coin.rotation+=0.1;
 
-            if(hasMagnet){
-                let dx=(bird.x+bird.width/2)-(coin.x+coin.width/2);
-                let dy=(bird.y+bird.height/2)-(coin.y+coin.height/2);
-                let distance=Math.sqrt(dx*dx+dy*dy);
+            if(coin.x<-coinWidth){
+                coinArray.splice(i,1);
+                continue;
+            }
 
-                if(distance<MAGNET_RANGE_PX){
+            if(hasMagnet && !coin.collected){
+                let dx=birdCenterX-(coin.x+coin.width/2);
+                let dy=birdCenterY-(coin.y+coin.height/2);
+                let distance=dx*dx+dy*dy;
+
+                if(distance<MAGNET_RANGE_PX * MAGNET_RANGE_PX){
                     coin.x+=dx*0.1;
                     coin.y+=dy*0.1;
-
-                    // context.strokeStyle="rgba(255, 215, 0, 0.7)";
-                    // context.lineWidth=2;
-                    // context.beginPath();
-                    // context.moveTo(bird.x+bird.width/2,bird.y+bird.height/2);
-                    // context.lineTo(coin.x+coin.width/2,coin.y+coin.height/2);
-                    // context.stroke();
                 }
             }
 
@@ -1105,24 +980,13 @@ function update(){
                 context.translate(coin.x+coin.width/2,coin.y+coin.height/2);
                 context.rotate(coin.rotation);
 
-                // context.fillStyle="rgba(0,0,0,0.3)";
-                // context.beginPath();
-                // context.ellipse(2,2,coinWidth/2,coinHeight/2,0,0,Math.PI*2);
-                // context.fill();
-
-
                 context.fillStyle = "#FFD700";
                 context.strokeStyle = "#FFA500";
                 context.lineWidth=3;
                 context.beginPath();
-                context.arc(0,0,coinWidth/2,0,Math.PI*2);
+                context.arc(0,0,coinRadius,0,TWO_PI);
                 context.fill();
                 context.stroke();
-
-                // context.fillStyle="#FFA500";
-                // context.beginPath();
-                // context.arc(0,0,coinWidth/4,0,Math.PI*2);
-                // context.fill();
 
                 context.fillStyle="#FFA500";
                 context.font="bold 18px Arial";
@@ -1135,28 +999,32 @@ function update(){
             if(!coin.collected && detectCollision(bird,coin)){
                 coin.collected=true;
 
-                let coinPoints=hasDoublePoints&& doublePointsTimer>0?6:3;
+                let coinPoints=(hasDoublePoints&& doublePointsTimer>t)?6:3;
                 score+=coinPoints;
                 sessionCoins++;
                 totalCoins++;
                 localStorage.setItem('totalCoins',totalCoins);
-                // updateCoinDisplay();
 
                 playSound(coinSound)
-                // createCoinParticles(coin.x,coin.y);
             }
         }
 
-        while(coinArray.length>0 && coinArray[0].x<-coinWidth){
-            coinArray.shift();
-        } 
+        // while(coinArray.length>0 && coinArray[0].x<-coinWidth){
+        //     coinArray.shift();
+        // } 
     }
 
     if(gameStarted && gameReady && !gameOver){
-        for(let i=0;i<powerupArray.length;i++){
+        for(let i=powerupArray.length-1;i>=0;i--){
             let powerup=powerupArray[i];
             powerup.x+=velocityX;
             powerup.float+=0.1;
+
+            if(powerup.x<-powerupWidth){
+                powerupArray.splice(i,1);
+                continue;
+            }
+
             let floatOffset=Math.sin(powerup.float)*5;
 
             if(!powerup.collected){
@@ -1210,9 +1078,9 @@ function update(){
             }
         }
 
-        while(powerupArray.length>0 && powerupArray[0].x<-powerupWidth){
-            powerupArray.shift();
-        } 
+        // while(powerupArray.length>0 && powerupArray[0].x<-powerupWidth){
+        //     powerupArray.shift();
+        // } 
     }
 
     //pipes
@@ -1221,6 +1089,12 @@ function update(){
         for(let i=0;i<pipeArray.length;i++){
             let pipe=pipeArray[i];
             pipe.x+=velocityX;
+            
+            if(pipe.x<-pipe.width){
+                pipeArray.splice(i,1);
+                i--;
+                continue;
+            }
             context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
 
             if(!pipe.passed && bird.x>pipe.x+pipe.width){
@@ -1296,7 +1170,6 @@ function update(){
                     }
                     bgMusic.pause();
                     bgMusic.currentTime=0;
-                    clearAllIntervals();
 
                     saveGameHistory(score,sessionCoins);
                 }
@@ -1304,20 +1177,10 @@ function update(){
             }
         }
         
-        while (pipeArray.length>0 && pipeArray[0].x<-pipeWidth){
-            pipeArray.shift(); 
-        }
+        // while (pipeArray.length>0 && pipeArray[0].x<-pipeWidth){
+        //     pipeArray.shift(); 
+        // }
     }
-
-    // if(gameStarted  && gameOver){
-    //     for(let i=0;i<pipeArray.length;i++){
-    //         let pipe=pipeArray[i];
-    //         context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
-    //     }
-    // }
-
-    
-    
 
     if(showMilestoneMessage && milestoneMessageTimer>0){
         context.fillStyle="yellow";
@@ -1325,10 +1188,10 @@ function update(){
         context.textAlign="center";
         context.strokeStyle="black";
         context.lineWidth=4;
-        context.strokeText("AMAZING!",board.width/2,board.height/2-50);
-        context.fillText("AMAZING!",board.width/2,board.height/2-50);
-        context.strokeText(lastMileStone+" POINTS!",board.width/2,board.height/2);
-        context.fillText(lastMileStone+" POINTS!",board.width/2,board.height/2);
+        context.strokeText("AMAZING!",boardWidth/2,boardHeight/2-50);
+        context.fillText("AMAZING!",boardWidth/2,boardHeight/2-50);
+        context.strokeText(lastMileStone+" POINTS!",boardWidth/2,boardHeight/2);
+        context.fillText(lastMileStone+" POINTS!",boardWidth/2,boardHeight/2);
         context.textAlign="left";
         milestoneMessageTimer--;
 
@@ -1355,23 +1218,21 @@ function update(){
 
 
     if(gameOver){
-        document.getElementById("gameOverPopup").style.display="block";
-        document.getElementById("finalScore").innerText=Math.floor(score);
+        domCache.gameOverPopup.style.display="block";
+        domCache.finalScore.innerText=Math.floor(score);
 
-        const coinsThisGame=document.getElementById("coinsThisGame");
+        const coinsThisGame=domCache.coinsThisGame;
         if(coinsThisGame) coinsThisGame.innerText=Math.floor(sessionCoins);
 
 
-        document.getElementById("totalCoinsDisplay").innerText=Math.floor(totalCoins);
+        domCache.totalCoinsDisplay.innerText=Math.floor(totalCoins);
 
         if(isNewHighScore){
-            document.getElementById("highScoreMessage").style.display="block";
+            domCache.highScoreMessage.style.display="block";
         }
         else{
-            document.getElementById("highScoreMessage").style.display="none";
+            domCache.highScoreMessage.style.display="none";
         }
-        // bgMusic.pause();
-        // bgMusic.currentTime=0;
     }
 }
 
@@ -1390,14 +1251,6 @@ function drawHUD(t){
         context.strokeText(pauseIcon,10,90);
         context.fillText(pauseIcon,10,90);
     }
-
-
-    // context.font="25px sans-serif";
-    // context.strokeText("Best: "+Math.floor(highScore),10,80);
-    // context.fillText("Best: "+Math.floor(highScore),10,80);
-
-    // context.strokeText("Coins: 💰 "+Math.floor(totalCoins),10,110);
-    // context.fillText("Coins: 💰 "+Math.floor(totalCoins),10,110);
 
     context.font="18px sans-serif";
     let y=130;
@@ -1424,81 +1277,12 @@ function drawHUD(t){
         y+=22;
     }
     
-    // let powerupY=150;
-    // context.font="20px sans-serif";
-    // context.fillStyle="white";
-    // // context.strokeStyle="black";
-    // // context.lineWidth=2;
-
-    // if(hasShield){
-    //     context.strokeText("🛡️ Shield",10,powerupY);
-    //     context.strokeStyle="cyan";
-    //     context.fillText("🛡️ Shield",10,powerupY);
-    //     context.fillStyle="white";
-    //     powerupY+=30;
-    // }
-    // if(hasSlowMotion){
-    //     let timeLeft=Math.ceil(slowMotionTimer/60);
-    //     context.strokeText("⏳ Slow Motion: "+timeLeft+"s",10,powerupY);
-    //     context.fillStyle="#9370DB";
-    //     context.fillText("⏳ Slow Motion: "+timeLeft+"s",10,powerupY);
-    //     context.fillStyle="white";
-    //     powerupY+=30;
-    // }
-    // if(hasDoublePoints){
-    //     let timeLeft=Math.ceil(doublePointsTimer/60);
-    //     context.strokeText("⚡ Double Points: "+timeLeft+"s",10,powerupY);
-    //     context.fillStyle="gold";
-    //     context.fillText("⚡ Double Points: "+timeLeft+"s",10,powerupY);
-    //     context.fillStyle="white";
-    //     powerupY+=30;
-    // }
-    // if(hasMagnet){
-    //     let timeLeft=Math.ceil(magnetTimer/60);
-    //     context.strokeText("🧲 Magnet: "+timeLeft+"s",10,powerupY);
-    //     context.fillStyle="hotpink";
-    //     context.fillText("🧲 Magnet: "+timeLeft+"s",10,powerupY);
-    //     context.fillStyle="white";
-    //     powerupY+=30;
-    // }
 }
-
-// let coinParticles=[];
-
-// function createCoinParticles(x,y){
-//     for(let i=0;i<8;i++){
-//         coinParticles.push({
-//             x:x,
-//             y:y,
-//             vx:(Math.random()-0.5)*4,
-//             vy:(Math.random()-0.5)*4,
-//             life:20,
-//             color:"#FFD700"
-//         });
-//     }
-// }
-
-// function createShieldBreakEffect(){
-//     for(let i=0;i<12;i++){
-//         coinParticles.push({
-//             x:bird.x+bird.width/2,
-//             y:bird.y+bird.height/2,
-//             vx:Math.cos(i*Math.PI/6)*5,
-//             vy:Math.sin(i*Math.PI/6)*5,
-//             life:30,
-//             color:"#00BFFF"
-//         })
-//     }
-// }
 
 function placePipes(){
     if(gameOver || !gameStarted || !gameReady){
         return;
     }
-
-    //(0.1)*pipeheight/2.
-    //0->-128 (pipeHeight/4)
-    //1->-128-256(pipeHeight/4-pipeheight/2)=-3/4 pipeHeight
 
     let randomPipeY=pipeY-pipeHeight/4-Math.random()*(pipeHeight/2);
 
@@ -1528,18 +1312,6 @@ function placePipes(){
     }
     pipeArray.push(bottomPipe);
 }
-
-// function moveBird(e){
-//     if((e.code=="Space" || e.code=="ArrowUp" || e.code=="keyX" ) && gameStarted && !gameOver){
-//         velocityY=-4;  //jump
-//     }
-
-//     if(!gameReady){
-//         gameReady=true;
-//         document.getElementById("instructions").style.display="none";
-//         pipeInterval=setInterval(placePipes,1500);
-//     }
-// }
 
 function detectCollision(a,b){
     return  a.x<b.x+b.width && 
