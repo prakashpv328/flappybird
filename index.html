@@ -18,6 +18,7 @@
             <div class="top-right-buttons">
                 <div class="icon-button" id="settingsBtn" title="Settings">⚙️</div>
                 <div class="icon-button" id="historyBtn" title="History">📜</div>
+                <div class="icon-button" id="soundBtn" title="Sound">🔊</div>
             </div>
 
             <canvas id="board"></canvas>
@@ -70,6 +71,45 @@
                 <button id="closeHistoryBtn">CLOSE</button>
 
             </div>
+        </div>
+
+        <div id="soundPopup">
+            <div class="sound-content">
+                <h2>🔊 SOUND</h2>
+                <div class="sound-options">
+                    <div class="sound-toggle">
+                        <span class="sound-label">🎵 Background Music</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="musicToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="sound-toggle">
+                        <span class="sound-label">🔊 Sound Effects</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sfxToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="volume-control">
+                        <span class="sound-label">🎶 Music Volume</span>
+                        <div class="volume-row">
+                            <input type="range" id="musicVolume" min="0" max="100" value="30" class="volume-slider">
+                            <span id="musicVolumeValue">30%</span> 
+                        </div>
+                    </div>
+                    <div class="volume-control">
+                        <span class="sound-label">🔔 SFX Volume</span>
+                        <div class="volume-row">
+                            <input type="range" id="sfxVolume" min="0" max="100" value="100" class="volume-slider">
+                            <span id="sfxVolumeValue">100%</span>
+                        </div>
+                    </div>
+
+                </div>
+                <button id="closeSoundBtn">CLOSE</button>
+            </div>
+
         </div>
 
         <button id="startBtn">START GAME</button>

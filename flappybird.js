@@ -77,6 +77,8 @@ let powerupSpawnMs=3000;
 
 let speedMultiplier=1;
 
+let lastCoinSound=0;
+
 
 const POWERUP_DURATION_MS=5000;
 const POWERUP_MESSAGE_MS=1000;
@@ -92,6 +94,12 @@ let bgMusic=new Audio();
 let dieSound=new Audio();
 let coinSound=new Audio();
 let powerupSound=new Audio();
+
+let musicEnabled=true;
+let sfxEnabled=true;
+let musicVolume=0.3;
+let sfxVolume=0.5;
+
 
 let lastMileStone=0;
 let showMilestoneMessage=false;
@@ -140,6 +148,9 @@ let powerupMessageTimer=0;
 
 let inLobby=true;
 
+const TWO_PI=Math.PI*2;
+const coinRadius=coinWidth/2;
+
 let domCache={};
 
 function cacheDOMElements(){
@@ -171,11 +182,174 @@ function cacheDOMElements(){
     domCache.coinsThisGame=document.getElementById("coinsThisGame");
     domCache.totalCoinsDisplay=document.getElementById("totalCoinsDisplay");
     domCache.highScoreMessage=document.getElementById("highScoreMessage");
+
+    
+    domCache.soundBtn= document.getElementById("soundBtn");
+    domCache.soundPopup=document.getElementById("soundPopup");
+    domCache.closeSoundBtn=document.getElementById("closeSoundBtn");
+    domCache.musicToggle=document.getElementById("musicToggle");
+    domCache.sfxToggle=document.getElementById("sfxToggle");
+    domCache.musicVolumeSlider=document.getElementById("musicVolume");
+    domCache.sfxVolumeSlider=document.getElementById("sfxVolume");
+    domCache.musicVolumeValue=document.getElementById("musicVolumeValue");
+    domCache.sfxVolumeValue=document.getElementById("sfxVolumeValue");
 }
 
 function nowMs(){
     return performance.now();
 }
+
+function loadSoundSettings(){
+    const savedMusicEnabled=localStorage.getItem('flappyMusicEnabled');
+    const savedSfxEnabled=localStorage.getItem('flappySfxEnabled');
+    const savedMusicVolume=localStorage.getItem('flappyMusicVolume');
+    const savedSfxVolume=localStorage.getItem('flappySfxVolume');
+
+    if(savedMusicEnabled!==null) musicEnabled=savedMusicEnabled==="true";
+    if(savedSfxEnabled!==null) sfxEnabled=savedSfxEnabled==="true";
+    if(savedMusicVolume!==null) musicVolume=parseFloat(savedMusicVolume);
+    if(savedSfxVolume!==null) sfxVolume=parseFloat(savedSfxVolume);
+
+    bgMusic.volume=musicVolume;
+    // sfx.volume=sfxVolume;
+}
+
+function saveSoundSettings(){
+    localStorage.setItem('flappyMusicEnabled',musicEnabled);
+    localStorage.setItem('flappySfxEnabled',sfxEnabled);
+    localStorage.setItem('flappyMusicVolume',musicVolume);
+    localStorage.setItem('flappySfxVolume',sfxVolume);
+}
+
+function updateSoundControls(){
+    if(domCache.musicToggle){
+        domCache.musicToggle.checked=musicEnabled;
+    }
+    if(domCache.sfxToggle){
+        domCache.sfxToggle.checked=sfxEnabled;
+    }
+    if(domCache.musicVolumeSlider){
+        domCache.musicVolumeSlider.value=Math.round(musicVolume*100);
+    }
+    if(domCache.sfxVolumeSlider){
+        domCache.sfxVolumeSlider.value=Math.round(sfxVolume*100);
+    }
+    if(domCache.musicVolumeValue){
+        domCache.musicVolumeValue.innerText=Math.round(musicVolume*100)+'%';
+    }
+    if(domCache.sfxVolumeValue){
+        domCache.sfxVolumeValue.innerText=Math.round(sfxVolume*100)+'%';
+    }
+    updateSoundButtonIcon();
+}
+
+function updateSoundButtonIcon(){
+    if(domCache.soundBtn){
+        if(!musicEnabled && !sfxEnabled){
+            domCache.soundBtn.innerText='🔇';
+        }
+        else if(!musicEnabled && musicVolume===0){
+            domCache.soundBtn.innerText='🔈';
+        }
+        else{
+            domCache.soundBtn.innerText='🔊';
+        }
+    }
+}
+
+function openSound(){
+    domCache.soundPopup.style.display='flex';
+    updateSoundControls();
+}
+
+function closeSound(){
+    domCache.soundPopup.style.display='none';
+}
+
+function toggleMusic(){
+    musicEnabled=domCache.musicToggle.checked;
+    saveSoundSettings();
+    updateSoundButtonIcon();
+
+    if(!musicEnabled){
+        bgMusic.pause();
+    }
+    else if(gameStarted && gameReady && !gameOver && !gamePaused){
+        playMusic();
+    }
+}
+
+function toggleSfx(){
+    sfxEnabled=domCache.sfxToggle.checked;
+    saveSoundSettings();
+    updateSoundButtonIcon();
+}
+
+function setMusicVolume(){
+    musicVolume=domCache.musicVolumeSlider.value/100;
+    bgMusic.volume=musicVolume;
+    domCache.musicVolumeValue.innerText=Math.round(musicVolume*100)+'%';
+    saveSoundSettings();
+    updateSoundButtonIcon();
+}
+
+function setSfxVolume(){
+    sfxVolume=domCache.sfxVolumeSlider.value/100;
+    domCache.sfxVolumeValue.innerText=Math.round(sfxVolume*100)+'%';
+    saveSoundSettings();
+
+    jumpSound.volume=sfxVolume;
+    scoreSound.volume=sfxVolume;
+    hitSound.volume=sfxVolume;
+    dieSound.volume=sfxVolume;
+    coinSound.volume=sfxVolume;
+    powerupSound.volume=sfxVolume;
+}
+
+function playMusic(){
+    // if(musicEnabled){
+    //     bgMusic.currentTime=0;
+    //     bgMusic.volume=musicVolume;
+    //     bgMusic.play().catch(e=>{});
+    // }
+
+    if(musicEnabled && bgMusic.paused){
+        bgMusic.volume=musicVolume;
+        bgMusic.play().catch(e=>{});
+    }
+}
+
+function playSound(audio){
+    // if(audio===bgMusic){
+    //     if(musicEnabled ){
+    //         audio.currentTime=0;
+    //         audio.volume=musicVolume;
+    //         audio.play().catch(e=>{});
+    //     }
+    // }
+    // else{
+    //     if(sfxEnabled){
+    //         audio.currentTime=0;
+    //         audio.volume=sfxVolume;
+    //         audio.play().catch(e=>{});
+    //     }
+    // }
+    if(audio === bgMusic){
+        if(musicEnabled && bgMusic.paused){
+            bgMusic.volume=musicVolume;
+            bgMusic.play().catch(e=>{});
+        }
+        return;
+    }
+
+    if(!sfxEnabled) return;
+
+    const sound=audio.cloneNode();
+    sound.volume=sfxVolume;
+    sound.play().catch(()=>{});
+}
+
+
 
 function saveGameHistory(score,coins){
     let history=JSON.parse(localStorage.getItem('flappyBirdHistory')||'[]');
@@ -213,9 +387,20 @@ function resetAllData(){
         localStorage.removeItem('flappyBirdHistory');
         localStorage.removeItem('flappyBirdHighScore');
         localStorage.removeItem("totalCoins");
+        localStorage.removeItem('flappyMusicEnabled');
+        localStorage.removeItem('flappySfxEnabled');
+        localStorage.removeItem('flappyMusicVolume');
+        localStorage.removeItem('flappySfxVolume');
 
         highScore=0;
         totalCoins=0;
+
+        musicEnabled=true;
+        sfxEnabled=true;
+        musicVolume=0.3;
+        sfxVolume=1.0;
+
+        updateSoundControls();
 
         updateLobbyStats();
         displayHistory();
@@ -287,6 +472,7 @@ window.onload=function(){
     context=board.getContext("2d");
 
     cacheDOMElements();
+    loadSoundSettings();
 
     oasisBg=new Image();
     oasisBg.src="./Images/flappybirdbg.png";
@@ -331,13 +517,28 @@ window.onload=function(){
     coinSound.src = "./Sounds/sfx_point.wav";
     powerupSound.src="./Sounds/sfx_swooshing.wav";
 
+    jumpSound.preload="auto";
+    scoreSound.preload="auto";
+    hitSound.preload="auto";
+    dieSound.preload="auto";
+    coinSound.preload="auto";
+    powerupSound.preload="auto";
+
     bgMusic.loop=true;
-    bgMusic.volume=0.3;
+    bgMusic.volume=musicVolume;
+
+    jumpSound.volume=sfxVolume;
+    scoreSound.volume=sfxVolume;
+    hitSound.volume=sfxVolume;
+    dieSound.volume=sfxVolume;
+    coinSound.volume=sfxVolume;
+    powerupSound.volume=sfxVolume;
 
     totalCoins=parseInt(localStorage.getItem('totalCoins')) || 0;
     highScore=parseInt(localStorage.getItem('flappyBirdHighScore'))||0;
     updateLobbyStats();
     applyTheme(currentTheme);
+    updateSoundControls();
 
 
     this.document.addEventListener("keydown",handleKeyPress);
@@ -357,6 +558,14 @@ window.onload=function(){
     domCache.settingsHardBtn.addEventListener("click",()=>setDifficulty("hard"));
     domCache.clearHistoryBtn.addEventListener("click",clearGameHistory);
     domCache.resetAllBtn.addEventListener("click",resetAllData);
+
+    domCache.soundBtn.addEventListener("click",openSound);
+    domCache.closeSoundBtn.addEventListener("click",closeSound);
+    domCache.musicToggle.addEventListener("change",toggleMusic);
+    domCache.sfxToggle.addEventListener("change",toggleSfx);
+    domCache.musicVolumeSlider.addEventListener("input",setMusicVolume);
+    domCache.sfxVolumeSlider.addEventListener("input",setSfxVolume);
+
 
     updateDifficultyButtons();
     updateThemeButtons();
@@ -658,10 +867,6 @@ function togglePause(){
     }
 }
 
-function playSound(audio){
-    audio.currentTime=0;
-    audio.play().catch(e=>{});
-}
 
 function handleKeyPress(e){
     if(e.code=="Space" && gameStarted && gameReady && !gameOver){
@@ -793,9 +998,6 @@ function activePowerup(type){
         showPowerupMessage("🧲 Magnet!");
     }
 }
-
-const TWO_PI=Math.PI*2;
-const coinRadius=coinWidth/2;
 
 
 function update(){
@@ -969,8 +1171,8 @@ function update(){
                 let distance=dx*dx+dy*dy;
 
                 if(distance<MAGNET_RANGE_PX * MAGNET_RANGE_PX){
-                    coin.x+=dx*0.1;
-                    coin.y+=dy*0.1;
+                    coin.x+=dx*MAGNET_PULL;
+                    coin.y+=dy*MAGNET_PULL;
                 }
             }
 
@@ -1005,7 +1207,11 @@ function update(){
                 totalCoins++;
                 localStorage.setItem('totalCoins',totalCoins);
 
-                playSound(coinSound)
+
+                if(nowMs()-lastCoinSound>50){
+                    playSound(coinSound);
+                    lastCoinSound=nowMs();
+                }
             }
         }
 
@@ -1098,7 +1304,7 @@ function update(){
             context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
 
             if(!pipe.passed && bird.x>pipe.x+pipe.width){
-                let points=(hasDoublePoints && doublePointsTimer>nowMs())?1:0.5;
+                let points=(hasDoublePoints && doublePointsTimer>t)?1:0.5;
                 score+=points; 
                 pipe.passed=true;
 
