@@ -122,10 +122,13 @@ let hasSlowMotion=false;
 let hasDoublePoints=false;
 let hasMagnet=false;
 
-let shieldTimer=0
-let slowMotionTimer=0;
-let doublePointsTimer=0;
-let magnetTimer=0;
+let shieldRemainingMs=0
+let slowMotionRemainingMs=0;
+let doublePointsRemainingMs=0;
+let magnetRemainingMs=0;
+
+let lastUpdateMs=0;
+
 
 let shieldRotation=0;
 let animationStarted=false;
@@ -199,6 +202,50 @@ function nowMs(){
     return performance.now();
 }
 
+function resetSpawnTimersToNow(){
+    const t=nowMs();
+    lastPipeSpawn=t;
+    lastCoinSpawn=t;
+    lastPowerupSpawn=t;
+}
+
+function resetUpdateClockToNow(){
+    lastUpdateMs=nowMs();
+}
+
+function updatePowerupRemainingTimers(t){
+    if(!gameStarted || !gameReady || gameOver || gamePaused){
+        lastUpdateMs=t;
+        return;
+    }
+
+    const dt=t-lastUpdateMs;
+    lastUpdateMs=t;
+
+    if(dt<=0) return;
+
+    if(shieldRemainingMs>0){
+        shieldRemainingMs=Math.max(0,shieldRemainingMs-dt);
+        if(shieldRemainingMs===0) hasShield=false;
+    }
+
+    if(slowMotionRemainingMs>0){
+        slowMotionRemainingMs=Math.max(0,slowMotionRemainingMs-dt);
+        if(slowMotionRemainingMs===0){
+            hasSlowMotion=false;
+            applySpeedMultiplier(1);
+        }
+    }
+    if(doublePointsRemainingMs>0){
+        doublePointsRemainingMs=Math.max(0,doublePointsRemainingMs-dt);
+        if(doublePointsRemainingMs===0) hasDoublePoints=false;
+    }
+    if(magnetRemainingMs>0){
+        magnetRemainingMs=Math.max(0,magnetRemainingMs-dt);
+        if(magnetRemainingMs===0) hasMagnet=false;
+    }
+}
+
 function loadSoundSettings(){
     const savedMusicEnabled=localStorage.getItem('flappyMusicEnabled');
     const savedSfxEnabled=localStorage.getItem('flappySfxEnabled');
@@ -248,7 +295,7 @@ function updateSoundButtonIcon(){
         if(!musicEnabled && !sfxEnabled){
             domCache.soundBtn.innerText='🔇';
         }
-        else if(!musicEnabled && musicVolume===0){
+        else if(!musicEnabled || musicVolume===0){
             domCache.soundBtn.innerText='🔈';
         }
         else{
@@ -572,6 +619,7 @@ window.onload=function(){
 
     if(!animationStarted){
         animationStarted=true;
+        resetUpdateClockToNow();
         requestAnimationFrame(update);
     }
 }
@@ -772,10 +820,10 @@ function startGame(){
         hasDoublePoints=false;
         hasMagnet=false;
         
-        shieldTimer=0;
-        slowMotionTimer=0;
-        doublePointsTimer=0;
-        magnetTimer=0;
+        shieldRemainingMs=0;
+        slowMotionRemainingMs=0;
+        doublePointsRemainingMs=0;
+        magnetRemainingMs=0;
 
         invulnerableFrames=0;
 
@@ -785,9 +833,11 @@ function startGame(){
         speedMultiplier=1;
         applyDifficultySettings();
 
-        lastPipeSpawn=0;
-        lastCoinSpawn=0;
-        lastPowerupSpawn=0
+        // lastPipeSpawn=0;
+        // lastCoinSpawn=0;
+        // lastPowerupSpawn=0
+        resetSpawnTimersToNow();
+        resetUpdateClockToNow();
 
         
         if(currentTheme==="oasis"){
@@ -864,6 +914,9 @@ function togglePause(){
     }
     else{
         playSound(bgMusic);
+
+        resetSpawnTimersToNow();
+        resetUpdateClockToNow();
     }
 }
 
@@ -891,10 +944,8 @@ function handleKeyPress(e){
             gameReady=true;
             velocityY=0;
             domCache.instructions.style.display="none";
-            const t=nowMs();
-            lastPipeSpawn=t;
-            lastCoinSpawn=t;
-            lastPowerupSpawn=t;
+            resetSpawnTimersToNow();
+            resetUpdateClockToNow();
         }
         else{
             if(difficulty==="easy"){
@@ -974,27 +1025,27 @@ function showPowerupMessage(msg){
 function activePowerup(type){
     playSound(powerupSound);
 
-    const t=nowMs();
+    resetUpdateClockToNow();
 
     if(type==="shield"){
         hasShield=true;
-        shieldTimer=t+POWERUP_DURATION_MS;
+        shieldRemainingMs=POWERUP_DURATION_MS;
         showPowerupMessage("🛡️ Shield Activated!");
     }
     else if(type==="slowmotion"){
         hasSlowMotion=true;
-        slowMotionTimer=t+POWERUP_DURATION_MS;
+        slowMotionRemainingMs=POWERUP_DURATION_MS;
         applySpeedMultiplier(0.5);
         showPowerupMessage("⏳ Slow Motion!");
     }
     else if(type==="doublepoints"){
         hasDoublePoints=true;
-        doublePointsTimer=t+POWERUP_DURATION_MS;
+        doublePointsRemainingMs=POWERUP_DURATION_MS;
         showPowerupMessage("✨ Double Points!");
     }
     else if(type==="magnet"){
         hasMagnet=true;
-        magnetTimer=t+POWERUP_DURATION_MS;
+        magnetRemainingMs=POWERUP_DURATION_MS;
         showPowerupMessage("🧲 Magnet!");
     }
 }
@@ -1028,19 +1079,21 @@ function update(){
         }
     }
 
-    if(hasShield && t>=shieldTimer){
-        hasShield=false;
-    }
-    if(hasSlowMotion && t>=slowMotionTimer){
-        hasSlowMotion=false;
-        applySpeedMultiplier(1);
-    }
-    if(hasDoublePoints && t>=doublePointsTimer){
-        hasDoublePoints=false;
-    }
-    if(hasMagnet && t>=magnetTimer){
-        hasMagnet=false;
-    }
+    updatePowerupRemainingTimers(t);
+
+    // if(hasShield && t>=shieldTimer){
+    //     hasShield=false;
+    // }
+    // if(hasSlowMotion && t>=slowMotionTimer){
+    //     hasSlowMotion=false;
+    //     applySpeedMultiplier(1);
+    // }
+    // if(hasDoublePoints && t>=doublePointsTimer){
+    //     hasDoublePoints=false;
+    // }
+    // if(hasMagnet && t>=magnetTimer){
+    //     hasMagnet=false;
+    // }
 
 
     // document.body.style.backgroundColor=bgColor;
@@ -1098,7 +1151,7 @@ function update(){
         }
     }
 
-    if(hasShield && shieldTimer>t){
+    if(hasShield && shieldRemainingMs>0){
         shieldRotation+=0.05;
 
         context.save();
@@ -1165,7 +1218,7 @@ function update(){
                 continue;
             }
 
-            if(hasMagnet && !coin.collected){
+            if(hasMagnet && magnetRemainingMs>0 && !coin.collected){
                 let dx=birdCenterX-(coin.x+coin.width/2);
                 let dy=birdCenterY-(coin.y+coin.height/2);
                 let distance=dx*dx+dy*dy;
@@ -1201,7 +1254,7 @@ function update(){
             if(!coin.collected && detectCollision(bird,coin)){
                 coin.collected=true;
 
-                let coinPoints=(hasDoublePoints&& doublePointsTimer>t)?6:3;
+                let coinPoints=(hasDoublePoints&& doublePointsRemainingMs>0)?6:3;
                 score+=coinPoints;
                 sessionCoins++;
                 totalCoins++;
@@ -1304,7 +1357,7 @@ function update(){
             context.drawImage(pipe.img,pipe.x,pipe.y,pipe.width,pipe.height);
 
             if(!pipe.passed && bird.x>pipe.x+pipe.width){
-                let points=(hasDoublePoints && doublePointsTimer>t)?1:0.5;
+                let points=(hasDoublePoints && doublePointsRemainingMs>0)?1:0.5;
                 score+=points; 
                 pipe.passed=true;
 
@@ -1356,7 +1409,7 @@ function update(){
 
 
             if(invulnerableFrames<=0 && detectCollision(bird,pipe) && !gameOver){
-                if(hasShield && shieldTimer>t){
+                if(hasShield && shieldRemainingMs>0){
                     // hasShield=false;
                     invulnerableFrames=10;
                     showPowerupMessage("🛡️ Blocked!");
@@ -1448,38 +1501,40 @@ function drawHUD(t){
     context.lineWidth=3;
 
     context.font="30px sans-serif";
-    context.strokeText("🪙 "+Math.floor(score),10,45);
-    context.fillText("🪙 "+Math.floor(score),10,45);
+    context.textAlign="center";
+    context.strokeText(Math.floor(score),boardWidth/2,50);
+    context.fillText(Math.floor(score),boardWidth/2,50);
+    context.textAlign="left";
 
     if(gameStarted && gameReady){
         context.font="35px sans-serif";
         let pauseIcon=gamePaused?"▶️":"⏸️";
-        context.strokeText(pauseIcon,10,90);
-        context.fillText(pauseIcon,10,90);
+        context.strokeText(pauseIcon,12,45);
+        context.fillText(pauseIcon,12,45);
     }
 
     context.font="18px sans-serif";
     let y=130;
 
 
-    if(hasShield && shieldTimer>0){
-        context.strokeText("🛡️ "+Math.ceil((shieldTimer-t)/1000)+"s",10,y);
-        context.fillText("🛡️ "+Math.ceil((shieldTimer-t)/1000)+"s",10,y);
+    if(hasShield && shieldRemainingMs>0){
+        context.strokeText("🛡️ "+Math.ceil((shieldRemainingMs)/1000)+"s",10,y);
+        context.fillText("🛡️ "+Math.ceil((shieldRemainingMs)/1000)+"s",10,y);
         y+=22;
     }
-    if(hasSlowMotion && slowMotionTimer>0){
-        context.strokeText("⏳ "+Math.ceil((slowMotionTimer-t)/1000)+"s",10,y);
-        context.fillText("⏳ "+Math.ceil((slowMotionTimer-t)/1000)+"s",10,y);
+    if(hasSlowMotion && slowMotionRemainingMs>0){
+        context.strokeText("⏳ "+Math.ceil((slowMotionRemainingMs)/1000)+"s",10,y);
+        context.fillText("⏳ "+Math.ceil((slowMotionRemainingMs)/1000)+"s",10,y);
         y+=22;
     }
-    if(hasDoublePoints && doublePointsTimer>0){
-        context.strokeText("✨ "+Math.ceil((doublePointsTimer-t)/1000)+"s",10,y);
-        context.fillText("✨ "+Math.ceil((doublePointsTimer-t)/1000)+"s",10,y);
+    if(hasDoublePoints && doublePointsRemainingMs>0){
+        context.strokeText("✨ "+Math.ceil((doublePointsRemainingMs)/1000)+"s",10,y);
+        context.fillText("✨ "+Math.ceil((doublePointsRemainingMs)/1000)+"s",10,y);
         y+=22;
     }
-    if(hasMagnet && magnetTimer>0){
-        context.strokeText("🧲 "+Math.ceil((magnetTimer-t)/1000)+"s",10,y);
-        context.fillText("🧲 "+Math.ceil((magnetTimer-t)/1000)+"s",10,y);
+    if(hasMagnet && magnetRemainingMs>0){
+        context.strokeText("🧲 "+Math.ceil((magnetRemainingMs)/1000)+"s",10,y);
+        context.fillText("🧲 "+Math.ceil((magnetRemainingMs)/1000)+"s",10,y);
         y+=22;
     }
     
