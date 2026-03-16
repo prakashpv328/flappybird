@@ -84,8 +84,8 @@ const POWERUP_DURATION_MS=5000;
 const POWERUP_MESSAGE_MS=1000;
 const INVULNERABLE_MS=250;
 
-const MAGNET_RANGE_PX=200;
-const MAGNET_PULL=0.10;
+const MAGNET_RANGE_PX=250;
+const MAGNET_PULL=0.20;
 
 let jumpSound=new Audio();
 let scoreSound=new Audio();
@@ -153,6 +153,73 @@ let inLobby=true;
 
 const TWO_PI=Math.PI*2;
 const coinRadius=coinWidth/2;
+const MOBILE_SPEED_MULT=3;
+
+let isTouchDevice=false;
+let pauseIconHitbox={x:0,y:0,w:0,h:0};
+
+function detectTouchDevice(){
+    return ('ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints>0 ));
+}
+
+function getCanvasPointFromClient(clientX,clientY){
+    const rect=board.getBoundingClientRect();
+    const scaleX=boardWidth/rect.width;
+    const scaleY=boardHeight/rect.height;
+    return {
+        x:(clientX-rect.left)*scaleX,
+        y:(clientY-rect.top)*scaleY
+    };
+}
+
+function isAnyPopupOpen(){
+    return (domCache.settingsPopup && domCache.settingsPopup.style.display === 'flex') ||
+    (domCache.historyPopup && domCache.historyPopup.style.display ==='flex')||
+    (domCache.soundPopup && domCache.soundPopup.style.display==='flex')||
+    (domCache.gameOverPopup && domCache.gameOverPopup.style.display==='block');
+}
+
+function handleCanvasPointerDown(e){
+    if(!isTouchDevice) return;
+    if(isAnyPopupOpen()) return;
+    if(!gameStarted) return;
+
+    const pt=getCanvasPointFromClient(e.clientX,e.clientY);
+
+    const hb=pauseIconHitbox;
+    const hitPause=pt.x>=hb.x && pt.x<=hb.x+hb.w &&
+                    pt.y>=hb.y && pt.y<=hb.y+hb.h;
+
+    if(hitPause){
+        togglePause();
+        return;
+    }
+
+    if(gameOver){
+        restartGame();
+        return;
+    }
+
+    if(gamePaused) return;
+
+    if(!gameReady){
+        gameReady=true;
+        velocityY=0;
+        domCache.instructions.style.display="none";
+        resetSpawnTimersToNow();
+        resetUpdateClockToNow();
+        return;
+    }
+
+    if(difficulty==="easy") velocityY=-6;
+    else if(difficulty==="medium") velocityY=-7;
+    else if(difficulty==="hard") velocityY=-8;
+
+    playSound(jumpSound);
+}
+
+const MOBILE_BG_SPEED_MULT=1;
+const MOBILE_SPAWN_SLOW_MULT=1.5;
 
 let domCache={};
 
@@ -382,14 +449,22 @@ function playSound(audio){
     //     }
     // }
     if(audio === bgMusic){
-        if(musicEnabled && bgMusic.paused){
-            bgMusic.volume=musicVolume;
-            bgMusic.play().catch(e=>{});
-        }
+        playMusic();
         return;
     }
 
     if(!sfxEnabled) return;
+
+    if(isTouchDevice){
+        try{
+            audio.pause();
+            audio.currentTime=0;
+            audio.volume=sfxVolume;
+            audio.play().catch(()=>{});
+        }
+        catch(e){}
+        return;
+    }
 
     const sound=audio.cloneNode();
     sound.volume=sfxVolume;
@@ -520,6 +595,14 @@ window.onload=function(){
 
     cacheDOMElements();
     loadSoundSettings();
+
+    isTouchDevice=detectTouchDevice();
+
+    if(isTouchDevice && domCache.poweruplegend){
+        domCache.powerupLegend.style.display="none";
+    }
+
+    board.addEventListener("pointerdown",handleCanvasPointerDown,{passive:true});
 
     oasisBg=new Image();
     oasisBg.src="./Images/flappybirdbg.png";
@@ -707,11 +790,12 @@ function updateDifficultyButtons(){
 }
 
 function applyDifficultySettings(){
+    let mobgravity=isTouchDevice?0.2:0;
 
     if(difficulty==="easy"){
         baseVelocityX=-1.5;
         pipeGap=boardHeight/3;
-        gravity=0.1;
+        gravity=0.1+mobgravity;
 
         pipeSpawnMs=2000;
         coinSpawnMs=2400;
@@ -721,7 +805,7 @@ function applyDifficultySettings(){
     else if(difficulty==="medium"){
         baseVelocityX=-2;
         pipeGap=boardHeight/4;
-        gravity=0.15;
+        gravity=0.15+mobgravity;
 
         pipeSpawnMs=1500;
         coinSpawnMs=2000;
@@ -730,14 +814,14 @@ function applyDifficultySettings(){
     else if(difficulty==="hard"){
         baseVelocityX=-3;
         pipeGap=boardHeight/5;
-        gravity=0.2;
+        gravity=0.2+mobgravity;
 
         pipeSpawnMs=1200;
         coinSpawnMs=1700;
         powerupSpawnMs=2500;
     }
-
-    velocityX=baseVelocityX*speedMultiplier;
+    let mobMult=(isTouchDevice?MOBILE_SPEED_MULT:1);
+    velocityX=baseVelocityX*speedMultiplier*mobMult;
 
 }
 
@@ -771,7 +855,8 @@ function applyDifficultySettings(){
 
 function applySpeedMultiplier(mult){
     speedMultiplier=mult;
-    velocityX=baseVelocityX*speedMultiplier;
+    let mobMult=(isTouchDevice?MOBILE_SPEED_MULT:1);
+    velocityX=baseVelocityX*speedMultiplier*mobMult;
 
 }
 
@@ -852,7 +937,13 @@ function startGame(){
         domCache.startBtn.style.display="none";
         domCache.lobbyStats.style.display="none";
         domCache.topRightButtons.style.display="none";
-        domCache.powerupLegend.style.display="block";
+
+        if(isTouchDevice){
+            domCache.powerupLegend.style.display="none";
+        }else{
+            domCache.powerupLegend.style.display="block";
+        }
+
         domCache.instructions.style.display="block";
         domCache.gameOverPopup.style.display="none";
         playSound(bgMusic);
@@ -1060,10 +1151,12 @@ function update(){
 
     const t=nowMs();
 
+    const spawnSlow=isTouchDevice?MOBILE_SPAWN_SLOW_MULT:1;
+
     if(gameStarted && gameReady && !gameOver && !gamePaused){
-        const pipeMs=pipeSpawnMs/speedMultiplier;
-        const coinMs=coinSpawnMs/speedMultiplier;
-        const powerMs=powerupSpawnMs/speedMultiplier;
+        const pipeMs=(pipeSpawnMs*spawnSlow)/speedMultiplier;
+        const coinMs=(coinSpawnMs*spawnSlow)/speedMultiplier;
+        const powerMs=(powerupSpawnMs*spawnSlow)/speedMultiplier;
 
         if(t-lastPipeSpawn>=pipeMs){
             placePipes();
@@ -1123,8 +1216,9 @@ function update(){
     }
 
     if(gameStarted  && !gameOver){
-        bgX+=velocityX;
-        bgX2+=velocityX;
+        const bgVel=isTouchDevice?(velocityX * MOBILE_BG_SPEED_MULT):velocityX;
+        bgX+=bgVel;
+        bgX2+=bgVel;
 
         if(bgX<=-boardWidth){
             bgX=bgX2+boardWidth;
@@ -1511,6 +1605,11 @@ function drawHUD(t){
         let pauseIcon=gamePaused?"▶️":"⏸️";
         context.strokeText(pauseIcon,12,45);
         context.fillText(pauseIcon,12,45);
+
+        pauseIconHitbox={x:0,y:0,w:80,h:80};
+    }
+    else{
+        pauseIconHitbox={x:0,y:0,w:0,h:0};
     }
 
     context.font="18px sans-serif";
