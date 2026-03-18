@@ -129,7 +129,6 @@ let magnetRemainingMs=0;
 
 let lastUpdateMs=0;
 
-
 let shieldRotation=0;
 let animationStarted=false;
 
@@ -157,6 +156,16 @@ const MOBILE_SPEED_MULT=3;
 
 let isTouchDevice=false;
 let pauseIconHitbox={x:0,y:0,w:0,h:0};
+
+const FLAP_SPEED_LOBBY=8;
+const FLAP_SPEED_GAME=10;
+
+const LOBBY_BOB_SPEED=0.05;
+const LOBBY_BOB_AMPLITUDE=10;
+
+let lobbyBaseBirdX=birdX;
+let lobbyBaseBirdY=birdY;
+let lobbyTime=0;
 
 function detectTouchDevice(){
     return ('ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints>0 ));
@@ -208,6 +217,8 @@ function handleCanvasPointerDown(e){
         domCache.instructions.style.display="none";
         resetSpawnTimersToNow();
         resetUpdateClockToNow();
+
+        frameCount=0;
         return;
     }
 
@@ -225,6 +236,7 @@ let domCache={};
 
 function cacheDOMElements(){
     domCache.startBtn=document.getElementById("startBtn");
+    domCache.heading=document.getElementById("heading");
     domCache.restartBtn=document.getElementById("restartBtn");
     domCache.backToLobbyBtn=document.getElementById("backToLobbyBtn");
     domCache.settingsBtn=document.getElementById("settingsBtn");
@@ -598,7 +610,7 @@ window.onload=function(){
 
     isTouchDevice=detectTouchDevice();
 
-    if(isTouchDevice && domCache.poweruplegend){
+    if(isTouchDevice && domCache.powerupLegend){
         domCache.powerupLegend.style.display="none";
     }
 
@@ -681,11 +693,13 @@ window.onload=function(){
     domCache.closeSettingsBtn.addEventListener("click",closeSettings);
     domCache.historyBtn.addEventListener("click",openHistory);
     domCache.closeHistoryBtn.addEventListener("click",closeHistory);
+
     domCache.settingsOasisBtn.addEventListener("click",()=>changeTheme("oasis"));
     domCache.settingsDesertBtn.addEventListener("click",()=>changeTheme("desert"));
     domCache.settingsEasyBtn.addEventListener("click",()=>setDifficulty("easy"));
     domCache.settingsMediumBtn.addEventListener("click",()=>setDifficulty("medium"));
     domCache.settingsHardBtn.addEventListener("click",()=>setDifficulty("hard"));
+    
     domCache.clearHistoryBtn.addEventListener("click",clearGameHistory);
     domCache.resetAllBtn.addEventListener("click",resetAllData);
 
@@ -699,6 +713,8 @@ window.onload=function(){
 
     updateDifficultyButtons();
     updateThemeButtons();
+
+    backToLobby();
 
     if(!animationStarted){
         animationStarted=true;
@@ -873,6 +889,7 @@ function startGame(){
         gameReady=false;
         gameOver=false;
         gamePaused=false;
+        heading.textContent="";
 
         bird.x=birdX;
         bird.y=birdY;
@@ -932,6 +949,8 @@ function startGame(){
             bgColor='#f4a460';
         }
 
+        domCache.heading.style.display="none";
+
         document.body.style.backgroundColor=bgColor;
 
         domCache.startBtn.style.display="none";
@@ -960,10 +979,12 @@ function backToLobby(){
     bgMusic.pause();
     bgMusic.currentTime=0;
 
-    bird.x=birdX;
-    bird.y=birdY;
-    bgX=0;
-    bgX2=boardWidth;
+    lobbyBaseBirdX=boardWidth/2-birdWidth/2;
+    lobbyBaseBirdY=boardHeight/2-birdHeight/2;
+    lobbyTime=0;
+
+    bird.x=lobbyBaseBirdX;
+    bird.y=lobbyBaseBirdY;
 
     pipeArray.length=0;
     coinArray.length=0;
@@ -978,6 +999,8 @@ function backToLobby(){
     applyTheme(currentTheme);
     applyDifficultySettings();
     updateLobbyStats();
+
+    domCache.heading.style.display="block";
 
     domCache.startBtn.style.display="block";
     domCache.lobbyStats.style.display="flex";
@@ -1037,6 +1060,8 @@ function handleKeyPress(e){
             domCache.instructions.style.display="none";
             resetSpawnTimersToNow();
             resetUpdateClockToNow();
+
+            frameCount=0;
         }
         else{
             if(difficulty==="easy"){
@@ -1233,13 +1258,31 @@ function update(){
         context.drawImage(bgImg,bgX2,0,boardWidth,boardHeight);
     }
 
+    if(inLobby && !gameStarted){
+        lobbyTime+=1;
+
+        lobbyBaseBirdX=boardWidth/2-birdWidth/2;
+        lobbyBaseBirdY=boardHeight/2-birdHeight/2;
+
+        const bob=Math.sin(lobbyTime*LOBBY_BOB_SPEED)*LOBBY_BOB_AMPLITUDE;
+        bird.x=lobbyBaseBirdX;
+        bird.y=lobbyBaseBirdY+bob;
+
+        frameCount++;
+        if(frameCount>=FLAP_SPEED_LOBBY){
+            currentFrame=(currentFrame+1)%4;
+            frameCount=0;
+        }
+
+    }
+
     //bird
     if(gameStarted && gameReady && !gameOver){
         velocityY+=gravity;
         bird.y=Math.max(bird.y+velocityY,0); 
 
         frameCount++;
-        if(frameCount>=5){
+        if(frameCount>=FLAP_SPEED_GAME){
             currentFrame=(currentFrame+1)%4;
             frameCount=0;
         }
