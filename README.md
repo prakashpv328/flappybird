@@ -59,7 +59,8 @@ Collect special power-ups to gain advantange:
 ### Keyboard Controls
 - key ->action
 - `Space` -> Start game,pause-resume,restart
-- `Enter` -> Start game,restart
+- `Enter` -> Start game,restart,close popups
+- `Backspace` -> go back to lobby
 - `↑ (Arrow Up)` -> jump/start game
 - `W` -> jump
 

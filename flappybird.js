@@ -512,7 +512,8 @@ function clearGameHistory(){
     if(confirm('Are you sure ? This is not reversible.')){
         localStorage.removeItem('flappyBirdHistory');
         alert('Game history cleared!');
-        displayHistory();
+        openHistory();
+        // displayHistory();
     }
 }
 
@@ -549,7 +550,7 @@ function displayHistory(){
     const history=loadGameHistory();
 
     if(history.length===0){
-        historyList.innerHTML='<p class="no-history">NO Games played<p>';
+        historyList.innerHTML='<p class="no-history">NO Games played</p>';
         return ;
     }
     historyList.innerHTML='';
@@ -889,7 +890,7 @@ function startGame(){
         gameReady=false;
         gameOver=false;
         gamePaused=false;
-        heading.textContent="";
+        // heading.textContent="";
 
         bird.x=birdX;
         bird.y=birdY;
@@ -957,11 +958,7 @@ function startGame(){
         domCache.lobbyStats.style.display="none";
         domCache.topRightButtons.style.display="none";
 
-        if(isTouchDevice){
-            domCache.powerupLegend.style.display="none";
-        }else{
-            domCache.powerupLegend.style.display="block";
-        }
+        domCache.powerupLegend.style.display="none";
 
         domCache.instructions.style.display="block";
         domCache.gameOverPopup.style.display="none";
@@ -1005,7 +1002,7 @@ function backToLobby(){
     domCache.startBtn.style.display="block";
     domCache.lobbyStats.style.display="flex";
     domCache.topRightButtons.style.display="flex";
-    domCache.powerupLegend.style.display="none";
+    domCache.powerupLegend.style.display="block";
     domCache.instructions.style.display="none";
     domCache.gameOverPopup.style.display="none";
 }
@@ -1033,24 +1030,56 @@ function togglePause(){
         resetUpdateClockToNow();
     }
 }
+function closeAllPopups(){
+    closeSettings();
+    closeHistory();
+    closeSound();
+}
 
 
 function handleKeyPress(e){
+    const EnterOrSpace=(e.code==="Enter" || e.code==="Space");
+
+    if(e.code==="Backspace" && gameOver){
+        e.preventDefault();
+        backToLobby();
+        return;
+    }
+
+    if(EnterOrSpace && gameOver){
+        e.preventDefault();
+        restartGame();
+        return;
+    }
+
+    if(isAnyPopupOpen() && (EnterOrSpace || e.code==="Escape")){
+
+        e.preventDefault();
+        e.stopPropagation();
+        closeAllPopups();
+
+        if(document.activeElement && typeof document.activeElement.blur==="function")
+        {
+            document.activeElement.blur();
+        }
+        return;
+    }
+
+    
+
     if(e.code=="Space" && gameStarted && gameReady && !gameOver){
         togglePause();
         return;
     }
 
     
-    if((e.code=="Space" || e.code=="Enter") && domCache.startBtn.style.display!="none"){
+    if(EnterOrSpace && !gameStarted){
+        closeAllPopups()
+;
         startGame()
         return;
     }
 
-    if((e.code=="Space" || e.code=="Enter") && gameOver){
-        restartGame();
-        return;
-    }
 
 
     if(( e.code=="ArrowUp" || e.code=="KeyW") && gameStarted && !gameOver && !gamePaused){
